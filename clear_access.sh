@@ -2,7 +2,7 @@
 # Script to clear all server access rules
 
 # Configuration
-PORTS=${1:-${PORTS:-25565}}
+PORTS=${1:-${PORTS:-22,8080,8443}}
 CHAIN_NAME="PORTAL_AUTH"
 
 # Convert comma-separated ports to array
@@ -48,7 +48,7 @@ else
         echo "   iptables -D $CHAIN_NAME -p tcp -s IP_ADDRESS --dport PORT_NUMBER -j ACCEPT"
         echo ""
         echo "For example:"
-        echo "   iptables -D $CHAIN_NAME -p tcp -s 192.168.1.100 --dport 25565 -j ACCEPT"
+        echo "   iptables -D $CHAIN_NAME -p tcp -s 192.168.1.100 --dport 8080 -j ACCEPT"
         
         echo ""
         echo "IMPORTANT: These commands must be run with root privileges (use sudo if needed)"

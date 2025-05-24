@@ -42,7 +42,7 @@ Open your browser and navigate to `http://your-server-ip`.
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `PORTS` | Comma-separated list of ports to protect | 25565,25566,25567,7777 |
+| `PORTS` | Comma-separated list of ports to protect | 22,8080,8443,3306 |
 | `SERVER_ADDRESS` | Server address shown to users | your-server-address |
 
 ## Security Considerations
@@ -50,8 +50,8 @@ Open your browser and navigate to `http://your-server-ip`.
 - The default configuration uses HTTP. For production, enable HTTPS by setting `DOMAIN` in your `.env` file.
 - User credentials are stored in a flat username:password file format
 - The iptables manager container runs with NET_ADMIN capability to modify firewall rules
-- Only authenticated users can access the protected ports
-- All ports share the same access rules - once authenticated, a user has access to all ports
+- Only authenticated users can access the protected ports (except 80/443 for the portal itself)
+- All protected ports share the same access rules - once authenticated, a user has access to all ports
 
 ## Customization
 
@@ -81,6 +81,8 @@ Since access rules persist by design, you must manually clear them:
      ```bash
      sudo iptables -F PORTAL_AUTH && sudo iptables -A PORTAL_AUTH -j DROP
      ```
+
+   The script also supports removing specific IP addresses and viewing currently authorized IPs.
 
 ### Checking Logs
 

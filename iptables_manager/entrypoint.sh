@@ -2,7 +2,7 @@
 set -e
 
 # Allow comma-separated list of ports
-PORTS=${PORTS:-25565}
+PORTS=${PORTS:-22,8080,8443}
 ACCESS_LOG="/app/access_log"
 CHAIN_NAME="PORTAL_AUTH"
 
@@ -34,7 +34,7 @@ for PORT in "${PORT_ARRAY[@]}"; do
 done
 
 
-echo "Authentication firewall manager started"
+echo "Port Access Authentication firewall manager started"
 echo "Monitoring for access requests on ports: $PORTS"
 
 # Monitor the access log file for new entries

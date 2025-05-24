@@ -1,6 +1,6 @@
 <?php
 // Configuration
-$ports = getenv('PORTS') ?: '25565';
+$ports = getenv('PORTS') ?: '22,8080,8443';
 $passwd_file = '/var/www/html/passwd';
 $message = "";
 $authenticated = false;
