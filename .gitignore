@@ -1,0 +1,6 @@
+passwd
+.env
+access_log
+
+caddy_data/
+caddy_config/

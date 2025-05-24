@@ -16,9 +16,10 @@ Use Docker, Caddy, and iptables to show a login page and allow users to access p
 
 ```bash
 cp .env.example .env
+cp passwd.example passwd
 ```
 
-Now configure the settings in `.env`.
+Now configure the settings in `.env` and add your users to the `passwd` file.
 
 Specifically, set PORTS to a comma-separated list of ports you want to protect.
 
@@ -57,12 +58,12 @@ To modify the appearance of the login page, edit `web/index.php` and update the 
 
 ### Managing Users
 
-Edit the `web/passwd` file directly to manage users. The file format is simple:
+Edit the `passwd` file to manage users. The file format is simple:
 ```
 username:password
 ```
 
-Each line contains a username and password pair separated by a colon.
+Each line contains a username and password pair separated by a colon. A sample file is provided as `passwd.example`.
 
 ### Removing Access Rules
 
@@ -107,8 +108,8 @@ docker-compose logs iptables_manager
 - **Application fails to start**: Ensure the `PORTS` environment variable is set in your `.env` file
 - **Web page doesn't load**: Check if the configured web ports (default: 80/443) are accessible and not blocked by firewall
 - **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
-- **Rules not being applied**: Check if the `access_log` file has correct permissions
-- **Changes to passwd file not taking effect**: Restart the container with `docker-compose restart php`
+- **Rules not being applied**: Check if the `access_log` file exists in the root directory and has permissions 666
+- **Changes to passwd file not taking effect**: Ensure your passwd file is in the root directory and restart the container with `docker-compose restart php`
 - **Need to clear all access**: Run `sudo ./portkeyctl clear` to manually flush the firewall chain
 - **Access remains after container restart**: This is by design - access rules are persistent across restarts
 
