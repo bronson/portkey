@@ -1,9 +1,13 @@
 #!/bin/bash
 set -e
 
-MINECRAFT_PORT=${MINECRAFT_PORT:-25565}
+# Allow comma-separated list of ports
+PORTS=${PORTS:-25565}
 ACCESS_LOG="/app/access_log"
-CHAIN_NAME="MINECRAFT_AUTH"
+CHAIN_NAME="PORTAL_AUTH"
+
+# Convert comma-separated ports to array
+IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
 
 # Create access log file if it doesn't exist
 touch $ACCESS_LOG
@@ -18,17 +22,20 @@ else
     echo "Chain $CHAIN_NAME already has rules, preserving existing configuration"
 fi
 
-# Send Minecraft traffic to our chain if not already set up
-if ! iptables -L INPUT -n | grep -q "$CHAIN_NAME"; then
-    echo "Directing Minecraft traffic to $CHAIN_NAME chain"
-    iptables -A INPUT -p tcp --dport $MINECRAFT_PORT -j $CHAIN_NAME
-else
-    echo "Traffic from port $MINECRAFT_PORT already directed to $CHAIN_NAME chain"
-fi
+# Send all traffic for configured ports to our chain if not already set up
+echo "Directing traffic for multiple ports to $CHAIN_NAME chain"
+for PORT in "${PORT_ARRAY[@]}"; do
+    if ! iptables -L INPUT -n | grep -q "$CHAIN_NAME.*dpt:$PORT"; then
+        echo "Adding rule for port $PORT to $CHAIN_NAME chain"
+        iptables -A INPUT -p tcp --dport $PORT -j $CHAIN_NAME
+    else
+        echo "Traffic from port $PORT already directed to $CHAIN_NAME chain"
+    fi
+done
 
 
-echo "Minecraft authentication firewall manager started"
-echo "Monitoring for access requests on port $MINECRAFT_PORT"
+echo "Authentication firewall manager started"
+echo "Monitoring for access requests on ports: $PORTS"
 
 # Monitor the access log file for new entries
 tail -f $ACCESS_LOG | while read line; do
@@ -50,15 +57,16 @@ tail -f $ACCESS_LOG | while read line; do
     fi
 
     if [ "$action" = "allow" ]; then
-        if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$ip.*dpt:$port"; then
-            echo "IP $ip already has access to port $port (User: $username)"
-            continue
-        fi
-
-        echo "Allowing access from $ip to port $port (User: $username)"
-
-        # Add firewall rule to allow access to our chain
-        # Insert at the top of the chain (before the DROP rule)
-        iptables -I $CHAIN_NAME 1 -p tcp -s $ip --dport $port -j ACCEPT
+        # Always add rules for all configured ports
+        for PORT in "${PORT_ARRAY[@]}"; do
+            if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$ip.*dpt:$PORT"; then
+                echo "IP $ip already has access to port $PORT (User: $username)"
+                continue
+            fi
+            
+            echo "Allowing access from $ip to port $PORT (User: $username)"
+            # Insert at the top of the chain (before the DROP rule)
+            iptables -I $CHAIN_NAME 1 -p tcp -s $ip --dport $PORT -j ACCEPT
+        done
     fi
 done

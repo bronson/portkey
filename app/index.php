@@ -1,6 +1,6 @@
 <?php
 // Configuration
-$minecraft_port = getenv('MINECRAFT_PORT') ?: 25565;
+$ports = getenv('PORTS') ?: '25565';
 $users_file = '/var/www/html/users.json';
 
 // Load users from JSON file
@@ -50,7 +50,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $log_entry = json_encode([
             'action' => 'allow',
             'ip' => $ip,
-            'port' => $minecraft_port,
             'username' => $input_username
         ]) . "\n";
         
@@ -66,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Minecraft Server Access</title>
+    <title>Server Access Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
@@ -82,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
     <div class="container">
-        <h2>Minecraft Server Access Portal</h2>
+        <h2>Server Access Portal</h2>
         <?php if (!empty($message)): ?>
             <div class="message <?php echo (strpos($message, 'Invalid') !== false) ? 'error' : ''; ?>"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>
@@ -92,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php if (!empty($_SESSION['user_note'])): ?>
                 <p><em><?php echo htmlspecialchars($_SESSION['user_note']); ?></em></p>
             <?php endif; ?>
-            <p>You can now connect to the Minecraft server.</p>
+            <p>You can now connect to all protected services.</p>
             <p>Server address: <?php echo getenv('SERVER_ADDRESS') ?: 'your-server-address'; ?></p>
             <p>Your access will remain valid permanently until manually revoked by an administrator.</p>
         <?php else: ?>

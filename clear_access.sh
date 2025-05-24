@@ -1,11 +1,14 @@
 #!/bin/bash
-# Script to clear all Minecraft server access rules
+# Script to clear all server access rules
 
 # Configuration
-MINECRAFT_PORT=${1:-25565}
-CHAIN_NAME="MINECRAFT_AUTH"
+PORTS=${1:-${PORTS:-25565}}
+CHAIN_NAME="PORTAL_AUTH"
 
-echo "Clearing all access to Minecraft server port $MINECRAFT_PORT"
+# Convert comma-separated ports to array
+IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
+
+echo "Clearing all access to protected ports: $PORTS"
 
 # Note: The container no longer removes rules on restart
 echo "NOTE: Restarting the container will NOT clear access rules anymore."
@@ -26,9 +29,9 @@ else
     ALLOWED_IPS=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}')
     
     if [ -z "$ALLOWED_IPS" ]; then
-        echo "No IP addresses currently have access to port $MINECRAFT_PORT"
+        echo "No IP addresses currently have access to protected ports"
     else
-        echo "The following IP addresses currently have access to port $MINECRAFT_PORT:"
+        echo "The following IP addresses currently have access to protected ports:"
         for IP in $ALLOWED_IPS; do
             echo " - $IP"
         done
@@ -38,11 +41,14 @@ else
         echo "   iptables -F $CHAIN_NAME && iptables -A $CHAIN_NAME -j DROP"
         
         echo ""
-        echo "To remove access for a specific IP, run:"
-        echo "   iptables -D $CHAIN_NAME -p tcp -s IP_ADDRESS --dport $MINECRAFT_PORT -j ACCEPT"
+        echo "To remove access for a specific IP from all ports, run:"
+        echo "   iptables -D $CHAIN_NAME -s IP_ADDRESS -j ACCEPT"
+        echo ""
+        echo "To remove access for a specific IP from a specific port, run:"
+        echo "   iptables -D $CHAIN_NAME -p tcp -s IP_ADDRESS --dport PORT_NUMBER -j ACCEPT"
         echo ""
         echo "For example:"
-        echo "   iptables -D $CHAIN_NAME -p tcp -s 192.168.1.100 --dport $MINECRAFT_PORT -j ACCEPT"
+        echo "   iptables -D $CHAIN_NAME -p tcp -s 192.168.1.100 --dport 25565 -j ACCEPT"
         
         echo ""
         echo "IMPORTANT: These commands must be run with root privileges (use sudo if needed)"

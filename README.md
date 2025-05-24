@@ -42,15 +42,16 @@ Open your browser and navigate to `http://your-server-ip`.
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `MINECRAFT_PORT` | Port your Minecraft server runs on | 25565 |
-| `SERVER_ADDRESS` | Minecraft server address shown to users | your-server-address |
+| `PORTS` | Comma-separated list of ports to protect | 25565,25566,25567,7777 |
+| `SERVER_ADDRESS` | Server address shown to users | your-server-address |
 
 ## Security Considerations
 
 - The default configuration uses HTTP. For production, enable HTTPS by setting `DOMAIN` in your `.env` file.
-- User credentials are stored in a JSON file (`users.json`) that can be directly edited.
-- The iptables manager container runs with NET_ADMIN capability, allowing it to modify firewall rules.
-- Only authenticated users can access your Minecraft server.
+- User credentials are stored in a JSON file (`users.json`) that can be directly edited
+- The iptables manager container runs with NET_ADMIN capability to modify firewall rules
+- Only authenticated users can access the protected ports
+- All ports share the same access rules - once authenticated, a user has access to all ports
 
 ## Customization
 
@@ -68,7 +69,7 @@ To modify the appearance of the login page, edit `app/index.php` and update the 
    
    - **For Advanced Users**: Flush the chain manually:
      ```bash
-     sudo iptables -F MINECRAFT_AUTH && sudo iptables -A MINECRAFT_AUTH -j DROP
+     sudo iptables -F PORTAL_AUTH && sudo iptables -A PORTAL_AUTH -j DROP
      ```
 
 ### Checking Logs
@@ -86,10 +87,10 @@ docker-compose logs iptables_manager
 ### Common Issues
 
 - **Web page doesn't load**: Check if ports 80/443 are accessible and not blocked by firewall
-- **Authentication works but can't connect to Minecraft**: Verify iptables_manager logs to ensure rules are being applied
+- **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
 - **Changes to users.json not taking effect**: Make sure the file is valid JSON and restart the container with `docker-compose restart php`
-- **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the MINECRAFT_AUTH chain
+- **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the PORTAL_AUTH chain
 - **Access remains after container restart**: This is by design - access rules are persistent across restarts
 
 ## License

@@ -37,7 +37,7 @@ services:
       - ./app/access_log:/var/www/html/access_log:rw
       - ./app/users.json:/var/www/html/users.json:ro
     environment:
-      - MINECRAFT_PORT=${MINECRAFT_PORT:-25565}
+      - PORTS=${PORTS:-25565}
       - SERVER_ADDRESS=${SERVER_ADDRESS:-your-server-address}
     restart: unless-stopped
     healthcheck:
@@ -59,7 +59,7 @@ services:
     cap_drop:
       - ALL
     environment:
-      - MINECRAFT_PORT=${MINECRAFT_PORT:-25565}
+      - PORTS=${PORTS:-25565}
     volumes:
       - ./app/access_log:/app/access_log:ro
     restart: unless-stopped
