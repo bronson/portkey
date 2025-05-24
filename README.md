@@ -4,33 +4,25 @@
 
 Use Docker, Caddy, and iptables to show a login page and allow users to access protected services.
 
-## Overview
-
-This project provides:
-
-- **Web Server**: Serves the webpage to authenticate against
-- **PHP-FPM**: handles authentication logic
-- **IPTables Manager**: Manages firewall rules
-
 ## Requirements
 
 - Docker and Docker Compose
 - A server running Linux (for iptables support)
-- Port 80/443 available for the web interface
-- Root privileges for iptables management
+- Ports available for the web interface (default: 80/443, configurable)
 
-## Setup Instructions
+## Setup
 
 ### 1. Configure Environment Variables
 
 ```bash
 cp .env.example .env
-nano .env  # Edit with your own credentials and settings
 ```
 
-The `PORTS` environment variable is required and must be set to a comma-separated list of ports you want to protect.
+Now configure the settings in `.env`.
 
-### 2. Build and Start the Services
+Specifically, set PORTS to a comma-separated list of ports you want to protect.
+
+### 2. Fire er Up
 
 ```bash
 docker-compose up -d
@@ -38,7 +30,7 @@ docker-compose up -d
 
 ### 3. Access the Web Portal
 
-Open your browser and navigate to `http://your-server-ip`.
+Open your browser and navigate to `http://your-server-ip` (or with the custom port if configured, e.g., `http://your-server-ip:8080`).
 
 ## Configuration Options
 
@@ -47,6 +39,8 @@ Open your browser and navigate to `http://your-server-ip`.
 | `PORTS` | Comma-separated list of ports to protect (required) | Yes |
 | `SERVER_ADDRESS` | Server address shown to users | No (defaults to your-server-address) |
 | `CHAIN_NAME` | iptables chain name for firewall rules | No (defaults to PORTKEY_AUTH) |
+| `WEB_HTTP_PORT` | HTTP port for the web interface | No (defaults to 80) |
+| `WEB_HTTPS_PORT` | HTTPS port for the web interface | No (defaults to 443) |
 
 ## Security Considerations
 
@@ -112,7 +106,7 @@ docker-compose logs iptables_manager
 ### Common Issues
 
 - **Application fails to start**: Ensure the `PORTS` environment variable is set in your `.env` file
-- **Web page doesn't load**: Check if ports 80/443 are accessible and not blocked by firewall
+- **Web page doesn't load**: Check if the configured web ports (default: 80/443) are accessible and not blocked by firewall
 - **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
 - **Changes to passwd file not taking effect**: Restart the container with `docker-compose restart php`

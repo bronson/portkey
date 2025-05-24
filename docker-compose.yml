@@ -4,8 +4,8 @@ services:
   web:
     image: caddy:2
     ports:
-      - "80:80"
-      - "443:443"
+      - "${WEB_HTTP_PORT:-80}:80"
+      - "${WEB_HTTPS_PORT:-443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./web:/var/www/html:ro
@@ -29,6 +29,8 @@ services:
       - /tmp
     environment:
       - DOMAIN=${DOMAIN:-localhost}
+      - WEB_HTTP_PORT=${WEB_HTTP_PORT:-80}
+      - WEB_HTTPS_PORT=${WEB_HTTPS_PORT:-443}
 
   php:
     image: php:8.1-fpm
@@ -39,6 +41,8 @@ services:
     environment:
       - PORTS=${PORTS}
       - SERVER_ADDRESS=${SERVER_ADDRESS:-your-server-address}
+      - WEB_HTTP_PORT=${WEB_HTTP_PORT:-80}
+      - WEB_HTTPS_PORT=${WEB_HTTPS_PORT:-443}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "php-fpm", "-t"]
