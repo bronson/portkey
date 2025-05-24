@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
 
-        $message = "Access granted! You can now connect to the server.";
+        $message = "Access granted! You can now connect to protected services.";
     } else {
         $message = "Invalid credentials!";
     }
@@ -50,7 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Server Access Portal</title>
+    <title>Portkey Access Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
@@ -66,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
     <div class="container">
-        <h2>Server Access Portal</h2>
+        <h2>Portkey Access Portal</h2>
         <?php if (!empty($message)): ?>
             <div class="message <?php echo (strpos($message, 'Invalid') !== false) ? 'error' : ''; ?>"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>

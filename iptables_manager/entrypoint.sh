@@ -4,7 +4,7 @@ set -e
 # Allow comma-separated list of ports
 PORTS=${PORTS:-22,8080,8443}
 ACCESS_LOG="/app/access_log"
-CHAIN_NAME="PORTAL_AUTH"
+CHAIN_NAME="PORTKEY_AUTH"
 
 # Convert comma-separated ports to array
 IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
@@ -23,7 +23,7 @@ else
 fi
 
 # Send all traffic for configured ports to our chain if not already set up
-echo "Directing traffic for multiple ports to $CHAIN_NAME chain"
+echo "Directing traffic for multiple ports to $CHAIN_NAME chain (Portkey)"
 for PORT in "${PORT_ARRAY[@]}"; do
     if ! iptables -L INPUT -n | grep -q "$CHAIN_NAME.*dpt:$PORT"; then
         echo "Adding rule for port $PORT to $CHAIN_NAME chain"
@@ -34,7 +34,7 @@ for PORT in "${PORT_ARRAY[@]}"; do
 done
 
 
-echo "Port Access Authentication firewall manager started"
+echo "Portkey Authentication firewall manager started"
 echo "Monitoring for access requests on ports: $PORTS"
 
 # Monitor the access log file for new entries

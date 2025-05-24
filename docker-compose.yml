@@ -21,7 +21,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - portal_auth
+      - portkey_auth
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -47,7 +47,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - portal_auth
+      - portkey_auth
     security_opt:
       - no-new-privileges:true
     user: www-data
@@ -81,5 +81,5 @@ volumes:
   caddy_config:
 
 networks:
-  portal_auth:
+  portkey_auth:
     driver: bridge

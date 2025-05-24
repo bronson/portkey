@@ -1,8 +1,8 @@
-# Homeportal
+# Portkey
 
-## A Network Authentication Portal
+## Lock down your services
 
-A Docker-based authentication system for controlling server access with a web portal and iptables.
+Use Docker, Caddy, and iptables to show a login page and allow users to access protected services.
 
 ## Overview
 
@@ -79,7 +79,7 @@ Since access rules persist by design, you must manually clear them:
 
    - **For Advanced Users**: Flush the chain manually:
      ```bash
-     sudo iptables -F PORTAL_AUTH && sudo iptables -A PORTAL_AUTH -j DROP
+     sudo iptables -F PORTKEY_AUTH && sudo iptables -A PORTKEY_AUTH -j DROP
      ```
 
    The script also supports removing specific IP addresses and viewing currently authorized IPs.
@@ -102,7 +102,7 @@ docker-compose logs iptables_manager
 - **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
 - **Changes to passwd file not taking effect**: Restart the container with `docker-compose restart php`
-- **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the PORTAL_AUTH chain
+- **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the PORTKEY_AUTH chain
 - **Access remains after container restart**: This is by design - access rules are persistent across restarts
 
 ## License

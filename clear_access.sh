@@ -3,7 +3,7 @@
 
 # Configuration
 PORTS=${1:-${PORTS:-22,8080,8443}}
-CHAIN_NAME="PORTAL_AUTH"
+CHAIN_NAME="PORTKEY_AUTH"
 
 # Convert comma-separated ports to array
 IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
@@ -39,6 +39,7 @@ else
         echo ""
         echo "To clear ALL access at once, run this command:"
         echo "   iptables -F $CHAIN_NAME && iptables -A $CHAIN_NAME -j DROP"
+        echo "   # Portkey Authentication - access rules cleared"
         
         echo ""
         echo "To remove access for a specific IP from all ports, run:"
