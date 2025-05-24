@@ -1,47 +1,32 @@
 <?php
 // Configuration
 $ports = getenv('PORTS') ?: '25565';
-$users_file = '/var/www/html/users.json';
-
-// Load users from JSON file
-function loadUsers() {
-    global $users_file;
-    if (file_exists($users_file)) {
-        $users_json = file_get_contents($users_file);
-        $users = json_decode($users_json, true);
-        return is_array($users) ? $users : [];
-    }
-    return [];
-}
+$passwd_file = '/var/www/html/passwd';
 
 // Basic authentication
 session_start();
 $message = "";
-$users = loadUsers();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
     $authenticated = false;
-    $user_note = "";
     
-    // Check credentials against the users array
-    foreach ($users as $user) {
-        if ($user['username'] === $input_username && $user['password'] === $input_password) {
-            $authenticated = true;
-
-            if (isset($user['note'])) {
-                $user_note = $user['note'];
+    // Check credentials against the password file
+    if (file_exists($passwd_file)) {
+        $lines = file($passwd_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            list($username, $password) = explode(':', $line, 2);
+            if (trim($username) === $input_username && trim($password) === $input_password) {
+                $authenticated = true;
+                break;
             }
-            break;
         }
     }
     
     if ($authenticated) {
         $_SESSION['authenticated'] = true;
         $_SESSION['username'] = $input_username;
-        $_SESSION['user_note'] = $user_note;
-
         
         // Get user's IP
         $ip = $_SERVER['REMOTE_ADDR'];
@@ -55,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
         
-        $message = "Access granted! You can now connect to the Minecraft server.";
+        $message = "Access granted! You can now connect to the server.";
     } else {
         $message = "Invalid credentials!";
     }
@@ -88,9 +73,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         <?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
             <p>You're authenticated as <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>!</p>
-            <?php if (!empty($_SESSION['user_note'])): ?>
-                <p><em><?php echo htmlspecialchars($_SESSION['user_note']); ?></em></p>
-            <?php endif; ?>
             <p>You can now connect to all protected services.</p>
             <p>Server address: <?php echo getenv('SERVER_ADDRESS') ?: 'your-server-address'; ?></p>
             <p>Your access will remain valid permanently until manually revoked by an administrator.</p>

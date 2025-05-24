@@ -48,7 +48,7 @@ Open your browser and navigate to `http://your-server-ip`.
 ## Security Considerations
 
 - The default configuration uses HTTP. For production, enable HTTPS by setting `DOMAIN` in your `.env` file.
-- User credentials are stored in a JSON file (`users.json`) that can be directly edited
+- User credentials are stored in a password file format: username:password
 - The iptables manager container runs with NET_ADMIN capability to modify firewall rules
 - Only authenticated users can access the protected ports
 - All ports share the same access rules - once authenticated, a user has access to all ports
@@ -59,8 +59,18 @@ Open your browser and navigate to `http://your-server-ip`.
 
 To modify the appearance of the login page, edit `app/index.php` and update the CSS in the style section.
 
+### Managing Users
 
-2. **Removing Access Rules**: Since access rules persist by design, you must manually clear them:
+Edit the `app/passwd` file directly to manage users. The file format is simple:
+```
+username:password
+```
+
+Each line contains a username and password pair separated by a colon.
+
+### Removing Access Rules
+
+Since access rules persist by design, you must manually clear them:
    
    - **Manual Cleanup**: Use the included `clear_access.sh` script:
      ```bash
@@ -89,7 +99,7 @@ docker-compose logs iptables_manager
 - **Web page doesn't load**: Check if ports 80/443 are accessible and not blocked by firewall
 - **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
-- **Changes to users.json not taking effect**: Make sure the file is valid JSON and restart the container with `docker-compose restart php`
+- **Changes to passwd file not taking effect**: Restart the container with `docker-compose restart php`
 - **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the PORTAL_AUTH chain
 - **Access remains after container restart**: This is by design - access rules are persistent across restarts
 

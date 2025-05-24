@@ -35,7 +35,7 @@ services:
     volumes:
       - ./app:/var/www/html:ro
       - ./app/access_log:/var/www/html/access_log:rw
-      - ./app/users.json:/var/www/html/users.json:ro
+      - ./app/passwd:/var/www/html/passwd:ro
     environment:
       - PORTS=${PORTS:-25565}
       - SERVER_ADDRESS=${SERVER_ADDRESS:-your-server-address}
