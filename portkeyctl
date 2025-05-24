@@ -1,0 +1,90 @@
+#!/bin/bash
+# Script to clear all server access rules
+
+# Load environment variables from .env if it exists
+if [ -f .env ]; then
+    source .env
+fi
+
+# Configuration with defaults
+CHAIN_NAME="${CHAIN_NAME:-PORTKEY_AUTH}"
+PORTS=${1:-${PORTS:-22,8080,8443}}
+
+# Convert comma-separated ports to array
+IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
+
+# Check if our chain exists
+iptables -L $CHAIN_NAME -n >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "The $CHAIN_NAME chain does not exist. No rules to clear."
+    exit 0
+fi
+
+# Get list of allowed IPs
+ALLOWED_IPS=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' | sort | uniq)
+
+# Function to display usage
+function show_usage {
+    echo "Usage: $0 [list|clear|remove IP]"
+    echo ""
+    echo "Commands:"
+    echo "  list               List all IPs with access"
+    echo "  clear              Clear all access rules"
+    echo "  remove <IP>        Remove access for specific IP"
+    echo ""
+    echo "Examples:"
+    echo "  $0 list            # List all IPs with access"
+    echo "  $0 clear           # Clear all access rules" 
+    echo "  $0 remove 192.168.1.100  # Remove access for 192.168.1.100"
+    echo ""
+}
+
+# Function to list allowed IPs
+function list_allowed {
+    if [ -z "$ALLOWED_IPS" ]; then
+        echo "No IP addresses currently have access to protected ports"
+    else
+        echo "The following IP addresses currently have access to protected ports (${PORT_ARRAY[*]}):"
+        for IP in $ALLOWED_IPS; do
+            echo " - $IP"
+        done
+    fi
+}
+
+# Main logic based on arguments
+case "$1" in
+    list)
+        list_allowed
+        ;;
+    clear)
+        echo "Clearing all access rules for chain $CHAIN_NAME"
+        iptables -F $CHAIN_NAME
+        iptables -A $CHAIN_NAME -j DROP
+        echo "All access rules cleared. Default policy set to DROP."
+        ;;
+    remove)
+        if [ -z "$2" ]; then
+            echo "Error: IP address required"
+            show_usage
+            exit 1
+        fi
+        
+        IP="$2"
+        echo "Removing access for IP $IP from all protected ports"
+        
+        for PORT in "${PORT_ARRAY[@]}"; do
+            if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$IP.*dpt:$PORT"; then
+                echo "Removing rule for IP $IP on port $PORT"
+                iptables -D $CHAIN_NAME -p tcp -s $IP --dport $PORT -j ACCEPT
+            fi
+        done
+        echo "Access removed for IP $IP"
+        ;;
+    *)
+        if [ -z "$1" ]; then
+            list_allowed
+        else
+            show_usage
+        fi
+        ;;
+esac

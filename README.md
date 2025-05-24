@@ -46,6 +46,7 @@ Open your browser and navigate to `http://your-server-ip`.
 |---------------------|-------------|---------|
 | `PORTS` | Comma-separated list of ports to protect (required) | Yes |
 | `SERVER_ADDRESS` | Server address shown to users | No (defaults to your-server-address) |
+| `CHAIN_NAME` | iptables chain name for firewall rules | No (defaults to PORTKEY_AUTH) |
 
 ## Security Considerations
 
@@ -72,19 +73,29 @@ Each line contains a username and password pair separated by a colon.
 
 ### Removing Access Rules
 
-Since access rules persist by design, you must manually clear them:
+Since access rules persist by design, you can manage them with the included `portkeyctl` script:
 
-   - **Manual Cleanup**: Use the included `clear_access.sh` script:
+   - **List Authorized IPs**: View all IP addresses with access:
      ```bash
-     sudo ./clear_access.sh
+     sudo ./portkeyctl list
+     ```
+
+   - **Clear All Access**: Remove all access rules:
+     ```bash
+     sudo ./portkeyctl clear
+     ```
+
+   - **Remove Specific IP**: Remove access for a specific IP address:
+     ```bash
+     sudo ./portkeyctl remove 192.168.1.100
      ```
 
    - **For Advanced Users**: Flush the chain manually:
      ```bash
-     sudo iptables -F PORTKEY_AUTH && sudo iptables -A PORTKEY_AUTH -j DROP
+     sudo iptables -F ${CHAIN_NAME:-PORTKEY_AUTH} && sudo iptables -A ${CHAIN_NAME:-PORTKEY_AUTH} -j DROP
      ```
 
-   The script also supports removing specific IP addresses and viewing currently authorized IPs.
+   The script automatically uses the CHAIN_NAME from your .env file, making it easier to manage your firewall rules.
 
 ### Checking Logs
 
@@ -105,7 +116,7 @@ docker-compose logs iptables_manager
 - **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
 - **Changes to passwd file not taking effect**: Restart the container with `docker-compose restart php`
-- **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the PORTKEY_AUTH chain
+- **Need to clear all access**: Run `sudo ./portkeyctl clear` to manually flush the firewall chain
 - **Access remains after container restart**: This is by design - access rules are persistent across restarts
 
 ## License

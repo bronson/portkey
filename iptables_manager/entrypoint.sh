@@ -2,7 +2,7 @@
 set -e
 
 ACCESS_LOG="/app/access_log"
-CHAIN_NAME="PORTKEY_AUTH"
+CHAIN_NAME="${CHAIN_NAME:-PORTKEY_AUTH}"
 
 if [ -z "$PORTS" ]; then
     echo "Error: PORTS environment variable is not set."

@@ -60,6 +60,7 @@ services:
       - ALL
     environment:
       - PORTS=${PORTS}
+      - CHAIN_NAME=${CHAIN_NAME:-PORTKEY_AUTH}
     volumes:
       - ./web/access_log:/app/access_log:ro
     restart: unless-stopped
