@@ -1,0 +1,31 @@
+{
+    # Use the DOMAIN environment variable if set, otherwise use :80
+    {$DOMAIN:localhost} {
+        root * /var/www/html
+        php_fastcgi php:9000
+        file_server
+        
+        # Automatic HTTPS when a domain is provided
+        # Will only enable HTTPS when DOMAIN env var is a proper domain, not localhost
+        tls {
+            # Automatic certificates from Let's Encrypt when DOMAIN is set
+            # For localhost or direct IP, this is skipped
+        }
+        
+        # Basic security headers
+        header {
+            Strict-Transport-Security max-age=31536000;
+            X-Content-Type-Options nosniff
+            X-Frame-Options DENY
+            Referrer-Policy no-referrer-when-downgrade
+        }
+        
+        # Gzip compression
+        encode gzip
+        
+        # Access logging
+        log {
+            output stdout
+        }
+    }
+}
