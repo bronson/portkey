@@ -1,15 +1,15 @@
 <?php
-// Configuration
+
 $ports = getenv('PORTS');
 if (!$ports) {
-    die("Error: PORTS environment variable is not set. The application requires configured ports to run.");
+    die("Error: PORTS environment variable is not set.");
 }
+
 $passwd_file = '/var/www/html/passwd';
 $message = "";
 $authenticated = false;
 $username = "";
 
-// Process login
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
@@ -35,11 +35,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         // Log the access request for the iptables_manager container
-        $log_entry = json_encode([
-            'action' => 'allow',
-            'ip' => $ip,
-            'username' => $username
-        ]) . "\n";
+        // Format: TIMESTAMP|ACTION|IP|USERNAME
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "$timestamp|allow|$ip|$username\n";
 
         file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
 
