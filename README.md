@@ -28,6 +28,8 @@ cp .env.example .env
 nano .env  # Edit with your own credentials and settings
 ```
 
+The `PORTS` environment variable is required and must be set to a comma-separated list of ports you want to protect.
+
 ### 2. Build and Start the Services
 
 ```bash
@@ -40,10 +42,10 @@ Open your browser and navigate to `http://your-server-ip`.
 
 ## Configuration Options
 
-| Environment Variable | Description | Default |
+| Environment Variable | Description | Required |
 |---------------------|-------------|---------|
-| `PORTS` | Comma-separated list of ports to protect | 22,8080,8443,3306 |
-| `SERVER_ADDRESS` | Server address shown to users | your-server-address |
+| `PORTS` | Comma-separated list of ports to protect (required) | Yes |
+| `SERVER_ADDRESS` | Server address shown to users | No (defaults to your-server-address) |
 
 ## Security Considerations
 
@@ -98,6 +100,7 @@ docker-compose logs iptables_manager
 
 ### Common Issues
 
+- **Application fails to start**: Ensure the `PORTS` environment variable is set in your `.env` file
 - **Web page doesn't load**: Check if ports 80/443 are accessible and not blocked by firewall
 - **Authentication works but can't connect to the server**: Verify iptables_manager logs to ensure rules are being applied to the correct ports
 - **Rules not being applied**: Check if the `access_log` file has correct permissions

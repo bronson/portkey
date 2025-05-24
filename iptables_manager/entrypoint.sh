@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
-# Allow comma-separated list of ports
-PORTS=${PORTS:-22,8080,8443}
+# Check if PORTS environment variable is set
+if [ -z "$PORTS" ]; then
+    echo "Error: PORTS environment variable is not set. The application requires configured ports to run."
+    exit 1
+fi
 ACCESS_LOG="/app/access_log"
 CHAIN_NAME="PORTKEY_AUTH"
 

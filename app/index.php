@@ -1,6 +1,9 @@
 <?php
 // Configuration
-$ports = getenv('PORTS') ?: '22,8080,8443';
+$ports = getenv('PORTS');
+if (!$ports) {
+    die("Error: PORTS environment variable is not set. The application requires configured ports to run.");
+}
 $passwd_file = '/var/www/html/passwd';
 $message = "";
 $authenticated = false;

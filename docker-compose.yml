@@ -37,7 +37,7 @@ services:
       - ./app/access_log:/var/www/html/access_log:rw
       - ./app/passwd:/var/www/html/passwd:ro
     environment:
-      - PORTS=${PORTS:-22,8080,8443}
+      - PORTS=${PORTS}
       - SERVER_ADDRESS=${SERVER_ADDRESS:-your-server-address}
     restart: unless-stopped
     healthcheck:
@@ -59,7 +59,7 @@ services:
     cap_drop:
       - ALL
     environment:
-      - PORTS=${PORTS:-22,8080,8443}
+      - PORTS=${PORTS}
     volumes:
       - ./app/access_log:/app/access_log:ro
     restart: unless-stopped
