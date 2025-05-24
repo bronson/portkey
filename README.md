@@ -48,7 +48,7 @@ Open your browser and navigate to `http://your-server-ip`.
 ## Security Considerations
 
 - The default configuration uses HTTP. For production, enable HTTPS by setting `DOMAIN` in your `.env` file.
-- User credentials are stored in a password file format: username:password
+- User credentials are stored in a flat username:password file format
 - The iptables manager container runs with NET_ADMIN capability to modify firewall rules
 - Only authenticated users can access the protected ports
 - All ports share the same access rules - once authenticated, a user has access to all ports
@@ -71,12 +71,12 @@ Each line contains a username and password pair separated by a colon.
 ### Removing Access Rules
 
 Since access rules persist by design, you must manually clear them:
-   
+
    - **Manual Cleanup**: Use the included `clear_access.sh` script:
      ```bash
      sudo ./clear_access.sh
      ```
-   
+
    - **For Advanced Users**: Flush the chain manually:
      ```bash
      sudo iptables -F PORTAL_AUTH && sudo iptables -A PORTAL_AUTH -j DROP

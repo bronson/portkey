@@ -2,16 +2,15 @@
 // Configuration
 $ports = getenv('PORTS') ?: '25565';
 $passwd_file = '/var/www/html/passwd';
-
-// Basic authentication
-session_start();
 $message = "";
+$authenticated = false;
+$username = "";
 
+// Process login
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
-    $authenticated = false;
-    
+
     // Check credentials against the password file
     if (file_exists($passwd_file)) {
         $lines = file($passwd_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -19,27 +18,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             list($username, $password) = explode(':', $line, 2);
             if (trim($username) === $input_username && trim($password) === $input_password) {
                 $authenticated = true;
+                $username = $input_username;
                 break;
             }
         }
     }
-    
+
     if ($authenticated) {
-        $_SESSION['authenticated'] = true;
-        $_SESSION['username'] = $input_username;
-        
         // Get user's IP
         $ip = $_SERVER['REMOTE_ADDR'];
-        
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ip = $_SERVER['HTTP_X_FORWARDED_FOR']; // Use forwarded IP if behind proxy
+        }
+
         // Log the access request for the iptables_manager container
         $log_entry = json_encode([
             'action' => 'allow',
             'ip' => $ip,
-            'username' => $input_username
+            'username' => $username
         ]) . "\n";
-        
+
         file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
-        
+
         $message = "Access granted! You can now connect to the server.";
     } else {
         $message = "Invalid credentials!";
@@ -70,9 +70,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php if (!empty($message)): ?>
             <div class="message <?php echo (strpos($message, 'Invalid') !== false) ? 'error' : ''; ?>"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>
-        
-        <?php if (isset($_SESSION['authenticated']) && $_SESSION['authenticated']): ?>
-            <p>You're authenticated as <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>!</p>
+
+        <?php if ($authenticated): ?>
+            <p>You're authenticated as <strong><?php echo htmlspecialchars($username); ?></strong>!</p>
             <p>You can now connect to all protected services.</p>
             <p>Server address: <?php echo getenv('SERVER_ADDRESS') ?: 'your-server-address'; ?></p>
             <p>Your access will remain valid permanently until manually revoked by an administrator.</p>
