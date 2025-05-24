@@ -8,7 +8,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./app:/var/www/html:ro
+      - ./web:/var/www/html:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -33,9 +33,9 @@ services:
   php:
     image: php:8.1-fpm
     volumes:
-      - ./app:/var/www/html:ro
-      - ./app/access_log:/var/www/html/access_log:rw
-      - ./app/passwd:/var/www/html/passwd:ro
+      - ./web:/var/www/html:ro
+      - ./web/access_log:/var/www/html/access_log:rw
+      - ./web/passwd:/var/www/html/passwd:ro
     environment:
       - PORTS=${PORTS}
       - SERVER_ADDRESS=${SERVER_ADDRESS:-your-server-address}
@@ -61,7 +61,7 @@ services:
     environment:
       - PORTS=${PORTS}
     volumes:
-      - ./app/access_log:/app/access_log:ro
+      - ./web/access_log:/app/access_log:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "iptables", "-L", "-n"]

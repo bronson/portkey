@@ -59,11 +59,11 @@ Open your browser and navigate to `http://your-server-ip`.
 
 ### Custom Styling
 
-To modify the appearance of the login page, edit `app/index.php` and update the CSS in the style section.
+To modify the appearance of the login page, edit `web/index.php` and update the CSS in the style section.
 
 ### Managing Users
 
-Edit the `app/passwd` file directly to manage users. The file format is simple:
+Edit the `web/passwd` file directly to manage users. The file format is simple:
 ```
 username:password
 ```
