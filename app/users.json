@@ -1,0 +1,26 @@
+[
+    {
+        "username": "alice",
+        "password": "secure_password123",
+        "note": "Alice - Regular player",
+        "access_duration": 12
+    },
+    {
+        "username": "bob",
+        "password": "bob_minecraft_2023",
+        "note": "Bob - Friend from work",
+        "access_duration": 24
+    },
+    {
+        "username": "charlie",
+        "password": "very_secure_pw!",
+        "note": "Charlie - Server moderator",
+        "access_duration": 72
+    },
+    {
+        "username": "dave",
+        "password": "dave123456",
+        "note": "Dave - Occasional player",
+        "access_duration": 6
+    }
+]

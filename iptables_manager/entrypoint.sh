@@ -43,6 +43,7 @@ tail -f $ACCESS_LOG | while read line; do
     port=$(echo $line | jq -r '.port')
     duration=$(echo $line | jq -r '.duration')
     timestamp=$(echo $line | jq -r '.timestamp')
+    username=$(echo $line | jq -r '.username // "unknown"')
     
     # Validate inputs
     if [[ -z "$ip" || -z "$port" || ! "$port" =~ ^[0-9]+$ || ! "$duration" =~ ^[0-9]+$ ]]; then
@@ -51,18 +52,19 @@ tail -f $ACCESS_LOG | while read line; do
     fi
     
     if [ "$action" = "allow" ]; then
-        echo "Allowing access from $ip to port $port for $duration hours"
+        echo "Allowing access from $ip to port $port for $duration hours (User: $username)"
         
         # Add firewall rule to allow access
         iptables -I INPUT -p tcp -s $ip --dport $port -j ACCEPT
         
         # Store IP in our tracking array
-        allowed_ips["$ip"]="$port"
+        allowed_ips["$ip"]="$port:$username"
         
         # Set rule to expire after duration
         (
             sleep $(($duration * 3600))
-            echo "Removing access for $ip to port $port"
+            user_info=${allowed_ips["$ip"]#*:}
+            echo "Removing access for $ip to port $port (User: $user_info)"
             iptables -D INPUT -p tcp -s $ip --dport $port -j ACCEPT 2>/dev/null || echo "Rule for $ip already removed"
             # Remove from tracking array
             unset allowed_ips["$ip"]
