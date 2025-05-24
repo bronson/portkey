@@ -11,8 +11,17 @@ chmod 666 $ACCESS_LOG
 # Function to handle cleanup on exit
 cleanup() {
     echo "Cleaning up firewall rules..."
+    
+    # Remove all allowed IP rules
+    for ip in "${!allowed_ips[@]}"; do
+        port=${allowed_ips[$ip]%%:*}
+        echo "Removing access rule for IP $ip to port $port"
+        iptables -D INPUT -p tcp -s $ip --dport $port -j ACCEPT 2>/dev/null || true
+    done
+    
     # Remove our custom DROP rule
     iptables -D INPUT -p tcp --dport $MINECRAFT_PORT -j DROP 2>/dev/null || true
+    
     echo "Cleanup complete"
     exit 0
 }
@@ -41,33 +50,27 @@ tail -f $ACCESS_LOG | while read line; do
     action=$(echo $line | jq -r '.action')
     ip=$(echo $line | jq -r '.ip')
     port=$(echo $line | jq -r '.port')
-    duration=$(echo $line | jq -r '.duration')
-    timestamp=$(echo $line | jq -r '.timestamp')
     username=$(echo $line | jq -r '.username // "unknown"')
     
     # Validate inputs
-    if [[ -z "$ip" || -z "$port" || ! "$port" =~ ^[0-9]+$ || ! "$duration" =~ ^[0-9]+$ ]]; then
+    if [[ -z "$ip" || -z "$port" || ! "$port" =~ ^[0-9]+$ ]]; then
         echo "Error: Invalid parameters in log entry: $line"
         continue
     fi
     
     if [ "$action" = "allow" ]; then
-        echo "Allowing access from $ip to port $port for $duration hours (User: $username)"
+        # Check if this IP is already allowed
+        if [[ -n "${allowed_ips[$ip]}" ]]; then
+            echo "IP $ip already has access to port $port (User: $username)"
+            continue
+        fi
+        
+        echo "Allowing access from $ip to port $port (User: $username)"
         
         # Add firewall rule to allow access
         iptables -I INPUT -p tcp -s $ip --dport $port -j ACCEPT
         
         # Store IP in our tracking array
         allowed_ips["$ip"]="$port:$username"
-        
-        # Set rule to expire after duration
-        (
-            sleep $(($duration * 3600))
-            user_info=${allowed_ips["$ip"]#*:}
-            echo "Removing access for $ip to port $port (User: $user_info)"
-            iptables -D INPUT -p tcp -s $ip --dport $port -j ACCEPT 2>/dev/null || echo "Rule for $ip already removed"
-            # Remove from tracking array
-            unset allowed_ips["$ip"]
-        ) &
     fi
 done

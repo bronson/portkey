@@ -1,7 +1,6 @@
 <?php
 // Configuration
 $minecraft_port = getenv('MINECRAFT_PORT') ?: 25565;
-$default_duration = getenv('ACCESS_DURATION') ?: 12; // hours
 $users_file = '/var/www/html/users.json';
 
 // Load users from JSON file
@@ -24,16 +23,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
     $authenticated = false;
-    $user_duration = $default_duration;
     $user_note = "";
     
     // Check credentials against the users array
     foreach ($users as $user) {
         if ($user['username'] === $input_username && $user['password'] === $input_password) {
             $authenticated = true;
-            if (isset($user['access_duration']) && is_numeric($user['access_duration'])) {
-                $user_duration = (int)$user['access_duration'];
-            }
+
             if (isset($user['note'])) {
                 $user_note = $user['note'];
             }
@@ -45,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['authenticated'] = true;
         $_SESSION['username'] = $input_username;
         $_SESSION['user_note'] = $user_note;
-        $_SESSION['access_duration'] = $user_duration;
+
         
         // Get user's IP
         $ip = $_SERVER['REMOTE_ADDR'];
@@ -55,14 +51,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             'action' => 'allow',
             'ip' => $ip,
             'port' => $minecraft_port,
-            'duration' => $user_duration,
-            'username' => $input_username,
-            'timestamp' => time()
+            'username' => $input_username
         ]) . "\n";
         
         file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
         
-        $message = "Access granted! You can now connect to the Minecraft server for {$user_duration} hours.";
+        $message = "Access granted! You can now connect to the Minecraft server.";
     } else {
         $message = "Invalid credentials!";
     }
@@ -100,7 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php endif; ?>
             <p>You can now connect to the Minecraft server.</p>
             <p>Server address: <?php echo getenv('SERVER_ADDRESS') ?: 'your-server-address'; ?></p>
-            <p>Your access will expire in <?php echo $_SESSION['access_duration']; ?> hours.</p>
+            <p>Your access will remain valid until the server is restarted.</p>
         <?php else: ?>
             <form method="post">
                 <div>
