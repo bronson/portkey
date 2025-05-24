@@ -14,8 +14,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
 
+    // Validate that username and password aren't blank
+    if (empty($input_username) || empty($input_password)) {
+        $message = "Username and password cannot be blank!";
+    }
     // Check credentials against the password file
-    if (file_exists($passwd_file)) {
+    elseif (file_exists($passwd_file)) {
         $lines = file($passwd_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
             list($username, $password) = explode(':', $line, 2);
@@ -80,11 +84,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <form method="post">
                 <div>
                     <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <input type="text" id="username" name="username" minlength="1" required>
                 </div>
                 <div>
                     <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" minlength="1" required>
                 </div>
                 <div>
                     <input type="submit" value="Login">
