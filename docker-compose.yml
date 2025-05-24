@@ -56,9 +56,9 @@ services:
       - no-new-privileges:true
     user: www-data
 
-  iptables_manager:
-    build: ./iptables_manager
-    container_name: portkey_iptables_manager
+  filter:
+    build: ./filter
+    container_name: portkey_filter
     restart: unless-stopped
     cap_add:
       - NET_ADMIN

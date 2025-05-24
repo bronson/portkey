@@ -38,7 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $ip = $_SERVER['HTTP_X_FORWARDED_FOR']; // Use forwarded IP if behind proxy
         }
 
-        // Log the access request for the iptables_manager container
+        // Log the access request for the filter container
         // Format: TIMESTAMP|ACTION|IP|USERNAME
         $timestamp = date('Y-m-d H:i:s');
         $log_entry = "$timestamp|allow|$ip|$username\n";
