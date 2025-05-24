@@ -2,6 +2,7 @@
 set -e
 
 ACCESS_LOG="/app/access_log"
+AUTHORIZED_IPS="/app/authorized_ips"
 CHAIN_NAME="${CHAIN_NAME:-PORTKEY_AUTH}"
 
 if [ -z "$PORTS" ]; then
@@ -10,9 +11,9 @@ if [ -z "$PORTS" ]; then
 fi
 IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
 
-# ensure access log exists even if services are started out of order
-touch $ACCESS_LOG
-chmod 666 $ACCESS_LOG
+# ensure files exist even if services are started out of order
+touch $ACCESS_LOG $AUTHORIZED_IPS
+chmod 666 $ACCESS_LOG $AUTHORIZED_IPS
 
 iptables -N $CHAIN_NAME 2>/dev/null || echo "Chain $CHAIN_NAME already exists"
 
@@ -24,7 +25,7 @@ else
 fi
 
 # Send all traffic for configured ports to our chain if not already set up
-echo "Directing traffic for multiple ports to $CHAIN_NAME chain (Portkey)"
+echo "Directing traffic for ports (${PORT_ARRAY[*]}) to $CHAIN_NAME"
 for PORT in "${PORT_ARRAY[@]}"; do
     if ! iptables -L INPUT -n | grep -q "$CHAIN_NAME.*dpt:$PORT"; then
         echo "Adding rule for port $PORT to $CHAIN_NAME chain"
@@ -34,24 +35,22 @@ for PORT in "${PORT_ARRAY[@]}"; do
     fi
 done
 
-
-echo "Portkey Authentication firewall manager started"
-echo "Monitoring for access requests on ports (${PORT_ARRAY[*]})"
+function update_authorized_ips() {
+    echo "# Authorized IPs - Last updated: $(date)" > $AUTHORIZED_IPS
+    echo "# Managed by Portkey DO NOT EDIT" >> $AUTHORIZED_IPS
+    iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' >> $AUTHORIZED_IPS
+    echo "# done." >> $AUTHORIZED_IPS
+}
 
 # Monitor the access log file for new entries
 tail -f $ACCESS_LOG | while read line; do
     # Parse the text format entry (TIMESTAMP|ACTION|IP|USERNAME)
-        IFS='|' read -r timestamp action ip username <<< "$line"
+    IFS='|' read -r timestamp action ip username <<< "$line"
 
-        # Validate inputs
-        if [[ -z "$ip" ]]; then
-            echo "Error: Invalid parameters in log entry: $line"
-            continue
-        fi
-
-    # If username is empty, set it to unknown
+    # Validate inputs
     if [[ -z "$username" ]]; then
-        username="unknown"
+        echo "Error: Invalid parameters in log entry: $line"
+        continue
     fi
 
     if [ "$action" = "allow" ]; then
@@ -66,5 +65,21 @@ tail -f $ACCESS_LOG | while read line; do
             # Insert at the top of the chain (before the DROP rule)
             iptables -I $CHAIN_NAME 1 -p tcp -s $ip --dport $PORT -j ACCEPT
         done
+        # Update the authorized IPs file
+        update_authorized_ips
+    elif [ "$action" = "deny" ]; then
+        # Remove access for all configured ports
+        echo "[$timestamp] Revoking access for IP $ip (User: $username)"
+        for PORT in "${PORT_ARRAY[@]}"; do
+            if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$ip.*dpt:$PORT"; then
+                echo "[$timestamp] Removing access for IP $ip to port $PORT (User: $username)"
+                iptables -D $CHAIN_NAME -p tcp -s $ip --dport $PORT -j ACCEPT
+            fi
+        done
+        echo "[$timestamp] Access revoked for IP $ip (User: $username)"
+        # Update the authorized IPs file
+        update_authorized_ips
+    else
+        echo "[$timestamp] Invalid action '$action' for IP $ip (User: $username)"
     fi
 done

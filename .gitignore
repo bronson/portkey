@@ -1,6 +1,7 @@
 passwd
 .env
 access_log
+authorized_ips
 
 caddy_data/
 caddy_config/

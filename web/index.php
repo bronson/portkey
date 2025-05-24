@@ -9,17 +9,35 @@ $passwd_file = '/var/www/html/passwd';
 $message = "";
 $authenticated = false;
 $username = "";
+$already_authorized = false;
+
+// Get user's IP
+$ip = $_SERVER['REMOTE_ADDR'];
+if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $ip = $_SERVER['HTTP_X_FORWARDED_FOR']; // Use forwarded IP if behind proxy
+}
+
+// Check if the IP is already authorized by reading the authorized_ips file
+if (file_exists('/var/www/html/authorized_ips')) {
+    $authorized_ips = file('/var/www/html/authorized_ips', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($authorized_ips as $line) {
+        // Skip comment lines
+        if (substr($line, 0, 1) === '#') {
+            continue;
+        }
+        if (trim($line) === $ip) {
+            $already_authorized = true;
+            break;
+        }
+    }
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
-
-    // Validate that username and password aren't blank
     if (empty($input_username) || empty($input_password)) {
         $message = "Username and password cannot be blank!";
-    }
-    // Check credentials against the password file
-    elseif (file_exists($passwd_file)) {
+    } elseif (file_exists($passwd_file)) {
         $lines = file($passwd_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
             list($username, $password) = explode(':', $line, 2);
@@ -31,27 +49,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    if ($authenticated) {
-        // Get user's IP
-        $ip = $_SERVER['REMOTE_ADDR'];
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR']; // Use forwarded IP if behind proxy
-        }
-
-        // Log the access request for the filter container
-        // Format: TIMESTAMP|ACTION|IP|USERNAME
+    if ($already_authorized && ($_POST['action']) && $_POST['action'] === 'logout') {
+        // Write a deny entry to the access_log
+        $timestamp = date('Y-m-d H:i:s');
+        $log_entry = "$timestamp|deny|$ip|$username\n";
+        file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
+        $message = "Access removal request has been submitted. Your access should be revoked shortly.";
+        $already_authorized = false; // Immediately update UI to show access is being revoked
+    } elseif ($authenticated) {
         $timestamp = date('Y-m-d H:i:s');
         $log_entry = "$timestamp|allow|$ip|$username\n";
-
         file_put_contents('/var/www/html/access_log', $log_entry, FILE_APPEND);
-
         $message = "Access granted! You can now connect to protected services.";
+        $already_authorized = true;
     } else {
         $message = "Invalid credentials!";
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -65,21 +80,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         input[type="submit"]:hover { background: #45a049; }
         .message { margin: 10px 0; padding: 10px; background: #e7f3fe; border-left: 6px solid #2196F3; }
         .error { background: #ffebee; border-left: 6px solid #f44336; }
+        .info { background: #e8f5e9; border-left: 6px solid #4CAF50; }
+        .warning { background: #fff8e1; border-left: 6px solid #FFC107; }
         strong { color: #2196F3; }
         em { color: #666; font-style: italic; }
+        .btn-danger { background: #f44336; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-danger:hover { background: #d32f2f; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Portkey Access Portal</h2>
-        <?php if (!empty($message)): ?>
-            <div class="message <?php echo (strpos($message, 'Invalid') !== false) ? 'error' : ''; ?>"><?php echo htmlspecialchars($message); ?></div>
+        <?php if ($already_authorized): ?>
+            <div class="message info">Your IP address (<?php echo htmlspecialchars($ip); ?>) is already authorized to access protected services!</div>
         <?php endif; ?>
 
-        <?php if ($authenticated): ?>
+        <?php if (!empty($message)): ?>
+            <div class="message <?php echo (strpos($message, 'Invalid') !== false) ? 'error' : ((strpos($message, 'removal') !== false) ? 'warning' : ''); ?>"><?php echo htmlspecialchars($message); ?></div>
+        <?php endif; ?>
+
+        <?php if ($authenticated || $already_authorized): ?>
             <p>You're authenticated as <strong><?php echo htmlspecialchars($username); ?></strong>!</p>
             <p>You can now connect to all protected services.</p>
             <p>Your access will remain valid permanently until manually revoked by an administrator.</p>
+
+            <form method="post">
+                <input type="hidden" name="action" value="logout">
+                <div>
+                    <input type="submit" class="btn-danger" value="Revoke My Access">
+                </div>
+            </form>
         <?php else: ?>
             <form method="post">
                 <div>

@@ -2,7 +2,7 @@
 
 ## Lock down your services
 
-Use Docker, Caddy, and iptables to show a login page and allow users to access protected services.
+Use Docker, Caddy, and iptables to allow your users to grant themselves access to protected ports on your server.
 
 ## Setup
 
@@ -13,6 +13,8 @@ Ensure you're using Docker, Docker Compose, and Linux (for iptables support).
 ```bash
 cp .env.example .env
 cp passwd.example passwd
+touch access_log authorized_ips
+chmod 666 access_log authorized_ips
 ```
 
 Now configure the settings in `.env` and add your users to the `passwd` file.
@@ -34,20 +36,16 @@ You can glance over the log messages to make sure everything looks OK.
 docker-compose logs
 ```
 
-### 3. Access the Web Portal
+### 3. Use the Web Portal
 
 Open your browser and navigate to your server. If you specify a
 good user/pw, your IP address will receive access to the protected ports.
 
-## Customization
+Users with IP addresses that already have access will see a notification and can revoke their own access if needed.
 
-### Custom Styling
+### 4. Manage Portkey
 
-To modify the appearance of the login page, edit `web/index.php` and update the CSS in the style section.
-
-### Removing Access Rules
-
-Since access rules persist by design, you can manage them with the included `portkeyctl` script:
+Use portkeyctl to manage the access rules.
 
    - **List Authorized IPs**: View all IP addresses with access:
      ```bash
@@ -64,20 +62,21 @@ Since access rules persist by design, you can manage them with the included `por
      sudo ./portkeyctl remove 192.168.1.100
      ```
 
-   - **For Advanced Users**: Flush the chain manually:
-     ```bash
-     sudo iptables -F ${CHAIN_NAME:-PORTKEY_AUTH} && sudo iptables -A ${CHAIN_NAME:-PORTKEY_AUTH} -j DROP
-     ```
+## Customization
 
-### Common Issues
+### Custom Styling
+
+To modify the appearance of the login page, edit `web/index.php` and update the CSS in the style section.
+
+### Potential Issues
 
 - **Application fails to start**: Ensure the `PORTS` environment variable is set in your `.env` file
-- **Web page doesn't load**: Check if the configured web ports (default: 80/443) are accessible and not blocked by firewall
-- **Authentication works but can't connect to the server**: Verify filter logs to ensure rules are being applied to the correct ports
-- **Rules not being applied**: Check if the `access_log` file exists in the root directory and has permissions 666
+- **Web page doesn't load**: Check if the configured web ports (default: 80/443) are accessible and not blocked by firewall. Check your webserver logs to see if the request hit the server: `docker-compose logs portkey-web`
+- **Authentication works but access wasn't granted**: Verify filter logs to ensure rules are being applied to the correct ports.
+- **Rules not being applied**: Check if the `access_log` and `authorized_ips` files exist in the root directory and have permissions 666. The filter service maintains the authorized_ips file which lists all IPs with access to protected ports.
 - **Changes to passwd file not taking effect**: Ensure your passwd file is in the root directory and restart the container with `docker-compose restart php`
-- **Need to clear all access**: Run `sudo ./portkeyctl clear` to manually flush the firewall chain
-- **Access remains after container restart**: This is by design - access rules are persistent across restarts
+- **Clear all access and start over**: Run `sudo ./portkeyctl clear` to manually flush the firewall chain
+- **Access remains after container is stopped**: This is by design - access rules are persistent across restarts
 
 ## License
 

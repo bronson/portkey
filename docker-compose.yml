@@ -40,6 +40,7 @@ services:
       - ./web:/var/www/html:ro
       - ./access_log:/var/www/html/access_log:rw
       - ./passwd:/var/www/html/passwd:ro
+      - ./authorized_ips:/var/www/html/authorized_ips:ro
     environment:
       - PORTS=${PORTS}
       - WEB_HTTP_PORT=${WEB_HTTP_PORT:-80}
@@ -69,6 +70,7 @@ services:
       - CHAIN_NAME=${CHAIN_NAME:-PORTKEY_AUTH}
     volumes:
       - ./access_log:/app/access_log:ro
+      - ./authorized_ips:/app/authorized_ips:rw
     # healthcheck:
     #   test: ["CMD", "iptables", "-L", "-n"]
     #   interval: 60s
