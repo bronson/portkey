@@ -32,7 +32,6 @@ nano .env  # Edit with your own credentials and settings
 
 ```bash
 docker-compose up -d
-chmod +x clear_access.sh  # Make the cleanup script executable
 ```
 
 ### 3. Access the Web Portal
@@ -60,49 +59,6 @@ Open your browser and navigate to `http://your-server-ip`.
 
 To modify the appearance of the login page, edit `app/index.php` and update the CSS in the style section.
 
-### Managing Users
-
-Edit the `app/users.json` file directly to manage users. The file structure is as follows:
-
-```json
-[
-    {
-        "username": "user1",
-        "password": "password1",
-        "note": "John's account"
-    },
-    {
-        "username": "user2",
-        "password": "password2",
-        "note": "Jane's account"
-    }
-]
-```
-
-Each user entry consists of:
-- `username`: Unique identifier for the user
-- `password`: User's authentication password
-- `note` (optional): A note about the user account
-
-To add, edit, or remove users, simply modify this JSON file directly.
-
-### Access Control
-
-All authenticated users will have access to the Minecraft server until the container is restarted. There is no automatic expiration of access.
-
-#### How IP Rules Are Removed
-
-There are two ways to remove IP access rules:
-
-1. **Automatic Cleanup on Container Restart**: When the iptables_manager container is restarted or stopped, it automatically removes all IP access rules.
-
-2. **Manual Cleanup**: Use the included `clear_access.sh` script to manually clear all access:
-   ```bash
-   ./clear_access.sh
-   ```
-   This script will restart the iptables_manager container, which removes all current access rules.
-
-## Troubleshooting
 
 ### Checking Logs
 
@@ -122,7 +78,7 @@ docker-compose logs iptables_manager
 - **Authentication works but can't connect to Minecraft**: Verify iptables_manager logs to ensure rules are being applied
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
 - **Changes to users.json not taking effect**: Make sure the file is valid JSON and restart the container with `docker-compose restart php`
-- **Need to clear all access**: Run `./clear_access.sh` to restart the iptables_manager and clear all access rules
+- **Need to clear all access**: Run `./clear_access.sh` or flush the MINECRAFT_AUTH chain directly
 
 ## License
 

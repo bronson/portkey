@@ -3,6 +3,7 @@ set -e
 
 MINECRAFT_PORT=${MINECRAFT_PORT:-25565}
 ACCESS_LOG="/app/access_log"
+CHAIN_NAME="MINECRAFT_AUTH"
 
 # Create access log file if it doesn't exist
 touch $ACCESS_LOG
@@ -12,15 +13,14 @@ chmod 666 $ACCESS_LOG
 cleanup() {
     echo "Cleaning up firewall rules..."
     
-    # Remove all allowed IP rules
-    for ip in "${!allowed_ips[@]}"; do
-        port=${allowed_ips[$ip]%%:*}
-        echo "Removing access rule for IP $ip to port $port"
-        iptables -D INPUT -p tcp -s $ip --dport $port -j ACCEPT 2>/dev/null || true
-    done
+    # Remove reference to our chain from INPUT
+    echo "Removing reference to $CHAIN_NAME chain from INPUT chain"
+    iptables -D INPUT -p tcp --dport $MINECRAFT_PORT -j $CHAIN_NAME 2>/dev/null || true
     
-    # Remove our custom DROP rule
-    iptables -D INPUT -p tcp --dport $MINECRAFT_PORT -j DROP 2>/dev/null || true
+    # Remove all rules in our chain and delete the chain
+    echo "Flushing and removing $CHAIN_NAME chain"
+    iptables -F $CHAIN_NAME 2>/dev/null || true
+    iptables -X $CHAIN_NAME 2>/dev/null || true
     
     echo "Cleanup complete"
     exit 0
@@ -29,15 +29,25 @@ cleanup() {
 # Set up trap for cleanup
 trap cleanup SIGTERM SIGINT
 
-# Block all external access to Minecraft port by default
-echo "Setting up initial firewall rule to block external access to port $MINECRAFT_PORT"
-iptables -A INPUT -p tcp --dport $MINECRAFT_PORT -j DROP
+# Create a new chain for Minecraft authentication
+echo "Creating $CHAIN_NAME chain for Minecraft authentication"
+iptables -N $CHAIN_NAME 2>/dev/null || iptables -F $CHAIN_NAME
 
-# Keep track of allowed IPs for cleanup
+# Set default policy for our chain to DROP
+echo "Setting default policy for $CHAIN_NAME chain to DROP"
+iptables -A $CHAIN_NAME -j DROP
+
+# Send Minecraft traffic to our chain
+echo "Directing Minecraft traffic to $CHAIN_NAME chain"
+iptables -A INPUT -p tcp --dport $MINECRAFT_PORT -j $CHAIN_NAME
+
+# Keep track of allowed IPs for logging
 declare -A allowed_ips
 
 echo "Minecraft authentication firewall manager started"
 echo "Monitoring for access requests on port $MINECRAFT_PORT"
+echo "Note: IP access remains valid until container restart"
+echo "All authorized IPs are managed in iptables chain: $CHAIN_NAME"
 
 # Monitor the access log file for new entries
 tail -f $ACCESS_LOG | while read line; do
@@ -67,8 +77,9 @@ tail -f $ACCESS_LOG | while read line; do
         
         echo "Allowing access from $ip to port $port (User: $username)"
         
-        # Add firewall rule to allow access
-        iptables -I INPUT -p tcp -s $ip --dport $port -j ACCEPT
+        # Add firewall rule to allow access to our chain
+        # Insert at the top of the chain (before the DROP rule)
+        iptables -I $CHAIN_NAME 1 -p tcp -s $ip --dport $port -j ACCEPT
         
         # Store IP in our tracking array
         allowed_ips["$ip"]="$port:$username"
