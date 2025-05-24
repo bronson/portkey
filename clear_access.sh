@@ -3,29 +3,27 @@
 
 # Configuration
 MINECRAFT_PORT=${1:-25565}
-CONTAINER_NAME="homeportal_iptables_manager_1"
 CHAIN_NAME="MINECRAFT_AUTH"
 
 echo "Clearing all access to Minecraft server port $MINECRAFT_PORT"
 
-# Option 1: Simply restart the iptables_manager container (recommended)
-echo "Method 1: Restarting iptables_manager container to clear all access"
-docker restart $CONTAINER_NAME
-echo "All access cleared by restarting the container"
+# Note: The container no longer removes rules on restart
+echo "NOTE: Restarting the container will NOT clear access rules anymore."
+echo "Access rules are now persistent across container restarts."
 
-# Option 2: For advanced users - flush the chain without container restart
+# Manual method to clear the rules
 echo ""
-echo "Method 2: Flushing the iptables chain (for advanced users)"
-echo "This will clear all access rules without restarting the container"
+echo "To clear all access rules, you must manually flush the chain:"
+echo "This is the ONLY way to clear access since rules now persist"
 
 # Check if our chain exists
-CHAIN_EXISTS=$(docker exec $CONTAINER_NAME iptables -L $CHAIN_NAME -n 2>/dev/null || echo "")
+CHAIN_EXISTS=$(iptables -L $CHAIN_NAME -n 2>/dev/null || echo "")
 
 if [ -z "$CHAIN_EXISTS" ]; then
     echo "The $CHAIN_NAME chain does not exist. No rules to clear."
 else
     # Get list of allowed IPs
-    ALLOWED_IPS=$(docker exec $CONTAINER_NAME iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}')
+    ALLOWED_IPS=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}')
     
     if [ -z "$ALLOWED_IPS" ]; then
         echo "No IP addresses currently have access to port $MINECRAFT_PORT"
@@ -36,18 +34,21 @@ else
         done
         
         echo ""
-        echo "To flush all rules and reset the chain, run:"
-        echo "docker exec $CONTAINER_NAME iptables -F $CHAIN_NAME"
+        echo "To clear ALL access at once, run this command:"
+        echo "   iptables -F $CHAIN_NAME && iptables -A $CHAIN_NAME -j DROP"
         
         echo ""
-        echo "To manually remove access for a specific IP, run:"
-        echo "docker exec $CONTAINER_NAME iptables -D $CHAIN_NAME -p tcp -s IP_ADDRESS --dport $MINECRAFT_PORT -j ACCEPT"
+        echo "To remove access for a specific IP, run:"
+        echo "   iptables -D $CHAIN_NAME -p tcp -s IP_ADDRESS --dport $MINECRAFT_PORT -j ACCEPT"
         echo ""
         echo "For example:"
-        echo "docker exec $CONTAINER_NAME iptables -D $CHAIN_NAME -p tcp -s 192.168.1.100 --dport $MINECRAFT_PORT -j ACCEPT"
+        echo "   iptables -D $CHAIN_NAME -p tcp -s 192.168.1.100 --dport $MINECRAFT_PORT -j ACCEPT"
+        
+        echo ""
+        echo "IMPORTANT: These commands must be run with root privileges (use sudo if needed)"
     fi
 fi
 
 echo ""
-echo "Note: Method 1 (restarting the container) is the recommended approach"
-echo "as it ensures a clean state and proper rule initialization."
+echo "IMPORTANT: Restarting the container will NOT clear access rules."
+echo "Access rules are now persistent by design and must be manually cleared."

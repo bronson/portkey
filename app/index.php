@@ -94,7 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php endif; ?>
             <p>You can now connect to the Minecraft server.</p>
             <p>Server address: <?php echo getenv('SERVER_ADDRESS') ?: 'your-server-address'; ?></p>
-            <p>Your access will remain valid until the server is restarted.</p>
+            <p>Your access will remain valid permanently until manually revoked by an administrator.</p>
         <?php else: ?>
             <form method="post">
                 <div>

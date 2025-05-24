@@ -42,7 +42,6 @@ Open your browser and navigate to `http://your-server-ip`.
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-
 | `MINECRAFT_PORT` | Port your Minecraft server runs on | 25565 |
 | `SERVER_ADDRESS` | Minecraft server address shown to users | your-server-address |
 
@@ -59,6 +58,18 @@ Open your browser and navigate to `http://your-server-ip`.
 
 To modify the appearance of the login page, edit `app/index.php` and update the CSS in the style section.
 
+
+2. **Removing Access Rules**: Since access rules persist by design, you must manually clear them:
+   
+   - **Manual Cleanup**: Use the included `clear_access.sh` script:
+     ```bash
+     sudo ./clear_access.sh
+     ```
+   
+   - **For Advanced Users**: Flush the chain manually:
+     ```bash
+     sudo iptables -F MINECRAFT_AUTH && sudo iptables -A MINECRAFT_AUTH -j DROP
+     ```
 
 ### Checking Logs
 
@@ -78,7 +89,8 @@ docker-compose logs iptables_manager
 - **Authentication works but can't connect to Minecraft**: Verify iptables_manager logs to ensure rules are being applied
 - **Rules not being applied**: Check if the `access_log` file has correct permissions
 - **Changes to users.json not taking effect**: Make sure the file is valid JSON and restart the container with `docker-compose restart php`
-- **Need to clear all access**: Run `./clear_access.sh` or flush the MINECRAFT_AUTH chain directly
+- **Need to clear all access**: Run `sudo ./clear_access.sh` to manually flush the MINECRAFT_AUTH chain
+- **Access remains after container restart**: This is by design - access rules are persistent across restarts
 
 ## License
 
