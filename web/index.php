@@ -75,7 +75,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php if ($authenticated): ?>
             <p>You're authenticated as <strong><?php echo htmlspecialchars($username); ?></strong>!</p>
             <p>You can now connect to all protected services.</p>
-            <p>Server address: <?php echo getenv('SERVER_ADDRESS') ?: 'your-server-address'; ?></p>
             <p>Your access will remain valid permanently until manually revoked by an administrator.</p>
         <?php else: ?>
             <form method="post">

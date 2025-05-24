@@ -37,7 +37,6 @@ Open your browser and navigate to `http://your-server-ip` (or with the custom po
 | Environment Variable | Description | Required |
 |---------------------|-------------|---------|
 | `PORTS` | Comma-separated list of ports to protect (required) | Yes |
-| `SERVER_ADDRESS` | Server address shown to users | No (defaults to your-server-address) |
 | `CHAIN_NAME` | iptables chain name for firewall rules | No (defaults to PORTKEY_AUTH) |
 | `WEB_HTTP_PORT` | HTTP port for the web interface | No (defaults to 80) |
 | `WEB_HTTPS_PORT` | HTTPS port for the web interface | No (defaults to 443) |
