@@ -50,9 +50,14 @@ Use portkeyctl to manage the access rules.
      sudo ./portkeyctl list
      ```
 
-   - **Clear All Access**: Remove all access rules:
+   - **Clear All Access**: Remove all access rules but continue filtering the ports:
      ```bash
      sudo ./portkeyctl clear
+     ```
+
+   - **Add Specific IP**: Add access for a specific IP address:
+     ```bash
+     sudo ./portkeyctl add 192.168.1.100
      ```
 
    - **Remove Specific IP**: Remove access for a specific IP address:

@@ -16,25 +16,28 @@ if [ -z "$PORTS" ]; then
 fi
 IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
 
-# If the chain doesn't exist, we can't do anything
-iptables -L $CHAIN_NAME -n >/dev/null 2>&1 || {
-    echo "Chain $CHAIN_NAME chain does not exist."
-    exit 0
-}
+# If the chain doesn't exist, we can't do anything (except for the stop command)
+if [[ "$1" != "stop" ]]; then
+    iptables -L $CHAIN_NAME -n >/dev/null 2>&1 || {
+        echo "Chain $CHAIN_NAME chain does not exist."
+        exit 0
+    }
+fi
 
 # Get list of allowed IPs
 ALLOWED_IPS=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' | sort | uniq)
 
 # Function to display usage
 function show_usage {
-    echo "Usage: $0 [list|check|clear|add IP|remove IP]"
+    echo "Usage: $0 [list|check|add IP|remove IP|clear|stop]"
     echo ""
     echo "Commands:"
-    echo "  list               List all IPs with access"
-    echo "  check              Verify chain setup and match with authorized_ips file"
-    echo "  clear              Remove all access, for every IP"
-    echo "  add <IP>           Add access for specific IP"
-    echo "  remove <IP>        Remove access for specific IP"
+    echo "  list           List all IPs with access"
+    echo "  check          Verify the chain is set up and internally consistent"
+    echo "  add <IP>       Add access for specific IP"
+    echo "  remove <IP>    Remove access for specific IP"
+    echo "  clear          Remove all access but keep the ports protected"
+    echo "  stop           Remove all Portkey protection, exposing the service"
     echo ""
     echo "Examples:"
     echo "  $0 add 192.168.1.100     # Add access for 192.168.1.100"
@@ -127,12 +130,47 @@ function remove_ip_access {
     if [ $removed -gt 0 ]; then
         echo "Access removed for IP $IP from ports (${PORT_ARRAY[*]})"
         # Update the authorized IPs file
-        update_authorized_ips
+        update_authorized_ips_file
         return 0
     else
         echo "No rules were found for IP $IP"
         return 0
     fi
+}
+
+# Function to completely remove all Portkey iptables configuration
+function stop_portkey {
+    echo "Stopping Portkey firewall configuration..."
+
+    # Check if chain exists
+    if ! iptables -L $CHAIN_NAME -n >/dev/null 2>&1; then
+        echo "Chain $CHAIN_NAME does not exist, nothing to do."
+        return 0
+    fi
+
+    # First remove all references to our chain from the INPUT chain
+    echo "Removing port redirects from INPUT chain to $CHAIN_NAME chain..."
+    for PORT in "${PORT_ARRAY[@]}"; do
+        if iptables -L INPUT -n | grep -q "$CHAIN_NAME.*dpt:$PORT"; then
+            echo "Removing rule for port $PORT from INPUT chain"
+            iptables -D INPUT -p tcp --dport $PORT -j $CHAIN_NAME
+        fi
+    done
+
+    # Flush the chain (remove all rules)
+    echo "Flushing all rules from $CHAIN_NAME chain..."
+    iptables -F $CHAIN_NAME
+
+    # Delete the chain
+    echo "Deleting $CHAIN_NAME chain..."
+    iptables -X $CHAIN_NAME 2>/dev/null || {
+        echo "WARNING: Could not delete chain $CHAIN_NAME, it might be in use by other rules."
+        echo "Please check your iptables configuration manually."
+    }
+
+    echo "Portkey firewall configuration has been completely removed."
+    update_authorized_ips_file
+    return 0
 }
 
 function check_chain_setup {
@@ -247,9 +285,14 @@ case "$1" in
         remove_ip_access "$2"
         exit $?
         ;;
+    stop)
+        # set +e
+        stop_portkey
+        exit $?
+        ;;
     *)
         if [ -z "$1" ]; then
-            list_allowed
+            list_allowed_ips
         else
             show_usage
         fi
