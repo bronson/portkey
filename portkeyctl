@@ -27,21 +27,22 @@ ALLOWED_IPS=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' | sort
 
 # Function to display usage
 function show_usage {
-    echo "Usage: $0 [list|check|clear|remove IP]"
+    echo "Usage: $0 [list|check|clear|add IP|remove IP]"
     echo ""
     echo "Commands:"
     echo "  list               List all IPs with access"
     echo "  check              Verify chain setup and match with authorized_ips file"
     echo "  clear              Remove all access, for every IP"
+    echo "  add <IP>           Add access for specific IP"
     echo "  remove <IP>        Remove access for specific IP"
     echo ""
-    echo "Example:"
+    echo "Examples:"
+    echo "  $0 add 192.168.1.100     # Add access for 192.168.1.100"
     echo "  $0 remove 192.168.1.100  # Remove access for 192.168.1.100"
     echo ""
 }
 
-# Function to list allowed IPs
-function list_allowed {
+function list_allowed_ips {
     if [ -z "$ALLOWED_IPS" ]; then
         echo "Chain $CHAIN_NAME is empty, no one has access to (${PORT_ARRAY[*]})"
     else
@@ -52,7 +53,88 @@ function list_allowed {
     fi
 }
 
-# Function to check chain configuration and match with authorized_ips file
+function update_authorized_ips_file {
+    if [ -f "$AUTHORIZED_IPS_FILE" ]; then
+        echo "# Authorized IPs - Last updated: $(date)" > "$AUTHORIZED_IPS_FILE"
+        echo "# Managed by Portkey DO NOT EDIT" >> "$AUTHORIZED_IPS_FILE"
+        iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' | sort | uniq >> "$AUTHORIZED_IPS_FILE"
+        echo "# done." >> "$AUTHORIZED_IPS_FILE"
+        echo "Updated authorized IPs file"
+    fi
+}
+
+# Function to add IP access to the chain
+function add_ip_access {
+    local IP="$1"
+
+    # Validate IP address format
+    if ! [[ $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Invalid IP address format"
+        return 1
+    fi
+
+    echo "Adding access for IP $IP to all protected ports"
+
+    # Check if IP already has access to any port
+    local existing_ports=()
+    for PORT in "${PORT_ARRAY[@]}"; do
+        if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$IP.*dpt:$PORT"; then
+            existing_ports+=($PORT)
+        fi
+    done
+
+    if [ ${#existing_ports[@]} -gt 0 ]; then
+        echo "IP $IP already has access to ports: ${existing_ports[*]}"
+    fi
+
+    # Add rules for all configured ports
+    local added=0
+    for PORT in "${PORT_ARRAY[@]}"; do
+        if ! iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$IP.*dpt:$PORT"; then
+            echo "Adding rule for IP $IP on port $PORT"
+            # Insert at the top of the chain (before the DROP rule)
+            iptables -I $CHAIN_NAME 1 -p tcp -s $IP --dport $PORT -j ACCEPT
+            added=$((added+1))
+        fi
+    done
+
+    if [ $added -gt 0 ]; then
+        echo "Access added for IP $IP to ports (${PORT_ARRAY[*]})"
+        # Update the authorized IPs file
+        update_authorized_ips_file
+        return 0
+    else
+        echo "No new access rules were added for IP $IP"
+        return 0
+    fi
+}
+
+# Function to remove IP access from the chain
+function remove_ip_access {
+    local IP="$1"
+
+    echo "Removing access for IP $IP from all protected ports"
+
+    local removed=0
+    for PORT in "${PORT_ARRAY[@]}"; do
+        if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$IP.*dpt:$PORT"; then
+            echo "Removing rule for IP $IP on port $PORT"
+            iptables -D $CHAIN_NAME -p tcp -s $IP --dport $PORT -j ACCEPT
+            removed=$((removed+1))
+        fi
+    done
+
+    if [ $removed -gt 0 ]; then
+        echo "Access removed for IP $IP from ports (${PORT_ARRAY[*]})"
+        # Update the authorized IPs file
+        update_authorized_ips
+        return 0
+    else
+        echo "No rules were found for IP $IP"
+        return 0
+    fi
+}
+
 function check_chain_setup {
     local errors=0
     local warnings=0
@@ -134,7 +216,7 @@ function check_chain_setup {
 
 case "$1" in
     list)
-        list_allowed
+        list_allowed_ips
         ;;
     check)
         check_chain_setup
@@ -145,6 +227,16 @@ case "$1" in
         iptables -F $CHAIN_NAME
         iptables -A $CHAIN_NAME -j DROP
         echo "Chain $CHAIN_NAME has been flushed, nobody has access to ${PORT_ARRAY[*]}"
+        update_authorized_ips_file
+        ;;
+    add)
+        if [ -z "$2" ]; then
+            echo "Error: IP address required"
+            show_usage
+            exit 1
+        fi
+        add_ip_access "$2"
+        exit $?
         ;;
     remove)
         if [ -z "$2" ]; then
@@ -152,18 +244,8 @@ case "$1" in
             show_usage
             exit 1
         fi
-
-        IP="$2"
-        echo "Removing access for IP $IP from all protected ports"
-
-        for PORT in "${PORT_ARRAY[@]}"; do
-            if iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$IP.*dpt:$PORT"; then
-                echo "Removing rule for IP $IP on port $PORT"
-                iptables -D $CHAIN_NAME -p tcp -s $IP --dport $PORT -j ACCEPT
-            fi
-        done
-
-        echo "Access removed for IP $IP from ports (${PORT_ARRAY[*]})"
+        remove_ip_access "$2"
+        exit $?
         ;;
     *)
         if [ -z "$1" ]; then

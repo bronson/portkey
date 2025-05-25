@@ -15,12 +15,12 @@ cp .env.example .env
 cp passwd.example passwd
 ```
 
-Now configure the settings in `.env` and add your users to the `passwd` file.
+Now configure the settings in `.env`. Especially make sure you set PORTS to a comma-separated list of ports you want to protect.
 
-Make sure you set PORTS to a comma-separated list of ports you want to protect.
+and add your users to the `passwd` file.
 
-The passwd file is re-read every time the web app performs an
-authentication so any modifications go live immediately.
+The passwd file is re-read every time the web app attempts an
+authentication so modifications go live immediately.
 
 ### 2. Start er Up
 
@@ -66,15 +66,15 @@ Use portkeyctl to manage the access rules.
 
 To modify the appearance of the login page, edit `web/index.php` and update the CSS in the style section.
 
-### Potential Issues
+### Troubleshooting
 
-- **Application fails to start**: Ensure the `PORTS` environment variable is set in your `.env` file
-- **Web page doesn't load**: Check if the configured web ports (default: 80/443) are accessible and not blocked by firewall. Check your webserver logs to see if the request hit the server: `docker-compose logs portkey-web`
-- **Authentication works but access wasn't granted**: Verify filter logs to ensure rules are being applied to the correct ports.
+- **Application fails to start**: Ensure the `PORTS` environment variable is set in your `.env` file.
+- **Web page doesn't load**: Check if the configured web ports (default: 80/443) are accessible and not blocked by firewall. Check your webserver logs to see if the request hit the server: `docker-compose logs portkey-web`.
+- **Authentication works but access wasn't granted**: Verify filter logs to ensure rules are being applied to the correct ports. Run `portkeyctl check` to verify the status of the iptables entries.
 - **Rules not being applied**: Check if the `access_log` and `authorized_ips` files exist in the root directory and have permissions 666. The filter service maintains the authorized_ips file which lists all IPs with access to protected ports.
-- **Changes to passwd file not taking effect**: Ensure your passwd file is in the root directory and restart the container with `docker-compose restart php`
-- **Clear all access and start over**: Run `sudo ./portkeyctl clear` to manually flush the firewall chain
-- **Access remains after container is stopped**: This is by design - access rules are persistent across restarts
+- **Changes to passwd file not taking effect**: Ensure your passwd file is in the root directory and restart the container with `docker-compose restart php`.
+- **Clear all access and start over**: Run `sudo ./portkeyctl clear` to manually flush the firewall chain.
+- **Access remains after container is stopped**: This is by design - access rules are persistent across restarts.
 
 ## License
 
