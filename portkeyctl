@@ -8,6 +8,7 @@ fi
 
 # Configuration
 CHAIN_NAME="${CHAIN_NAME:-PORTKEY_AUTH}"
+AUTHORIZED_IPS_FILE="${AUTHORIZED_IPS:-./authorized_ips}"
 
 if [ -z "$PORTS" ]; then
     echo "Error: PORTS environment variable is not set."
@@ -26,16 +27,15 @@ ALLOWED_IPS=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' | sort
 
 # Function to display usage
 function show_usage {
-    echo "Usage: $0 [list|clear|remove IP]"
+    echo "Usage: $0 [list|check|clear|remove IP]"
     echo ""
     echo "Commands:"
     echo "  list               List all IPs with access"
+    echo "  check              Verify chain setup and match with authorized_ips file"
     echo "  clear              Remove all access, for every IP"
     echo "  remove <IP>        Remove access for specific IP"
     echo ""
-    echo "Examples:"
-    echo "  $0 list            # List all IPs with access"
-    echo "  $0 clear           # Clear all access rules"
+    echo "Example:"
     echo "  $0 remove 192.168.1.100  # Remove access for 192.168.1.100"
     echo ""
 }
@@ -52,9 +52,93 @@ function list_allowed {
     fi
 }
 
+# Function to check chain configuration and match with authorized_ips file
+function check_chain_setup {
+    local errors=0
+    local warnings=0
+
+    echo "Checking chain $CHAIN_NAME configuration..."
+
+    # Check if chain exists
+    if ! iptables -L $CHAIN_NAME -n >/dev/null 2>&1; then
+        echo "ERROR: Chain $CHAIN_NAME does not exist."
+        errors=$((errors+1))
+        return 1
+    fi
+
+    # Check if INPUT chain has rules for all configured ports
+    echo "Checking port routing to $CHAIN_NAME chain..."
+    for PORT in "${PORT_ARRAY[@]}"; do
+        if ! iptables -L INPUT -n | grep -q "$CHAIN_NAME.*dpt:$PORT"; then
+            echo "ERROR: Port $PORT is not configured to use chain $CHAIN_NAME"
+            errors=$((errors+1))
+        else
+            echo "✓ Port $PORT correctly routed to $CHAIN_NAME chain"
+        fi
+    done
+
+    # Check if chain has a DROP rule at the end
+    if ! iptables -L $CHAIN_NAME -n | grep -q "DROP"; then
+        echo "ERROR: Chain $CHAIN_NAME does not have a DROP rule"
+        errors=$((errors+1))
+    else
+        echo "✓ Chain $CHAIN_NAME has a DROP rule"
+    fi
+
+    # Check if all IPs in authorized_ips file have appropriate rules
+    if [ -f "$AUTHORIZED_IPS_FILE" ]; then
+        echo "Checking authorized_ips file against chain rules..."
+        # Get IPs from the authorized_ips file (skipping comment lines)
+        local file_ips=$(grep -v "^#" "$AUTHORIZED_IPS_FILE" | sort | uniq)
+        local chain_ips=$(iptables -L $CHAIN_NAME -n | grep ACCEPT | awk '{print $4}' | sort | uniq)
+
+        # Check if any IPs in file are not in chain
+        for IP in $file_ips; do
+            if ! echo "$chain_ips" | grep -q "^$IP$"; then
+                echo "WARNING: IP $IP is in authorized_ips file but not in the chain"
+                warnings=$((warnings+1))
+            fi
+        done
+
+        # Check if any IPs in chain are not in file
+        for IP in $chain_ips; do
+            if ! echo "$file_ips" | grep -q "^$IP$"; then
+                echo "WARNING: IP $IP is in the chain but not in authorized_ips file"
+                warnings=$((warnings+1))
+            fi
+        done
+
+        # Check if each IP has rules for all configured ports
+        for IP in $chain_ips; do
+            for PORT in "${PORT_ARRAY[@]}"; do
+                if ! iptables -L $CHAIN_NAME -n | grep -q "ACCEPT.*$IP.*dpt:$PORT"; then
+                    echo "ERROR: IP $IP is missing rule for port $PORT"
+                    errors=$((errors+1))
+                fi
+            done
+        done
+    else
+        echo "WARNING: Authorized IPs file ($AUTHORIZED_IPS_FILE) not found"
+        warnings=$((warnings+1))
+    fi
+
+    # Print summary
+    if [ $errors -eq 0 ] && [ $warnings -eq 0 ]; then
+        echo "✓ Chain $CHAIN_NAME is correctly configured"
+        return 0
+    else
+        echo "Check completed with $errors errors and $warnings warnings"
+        [ $errors -gt 0 ] && return 1 || return 0
+    fi
+}
+
 case "$1" in
     list)
         list_allowed
+        ;;
+    check)
+        check_chain_setup
+        exit $?
         ;;
     clear)
         echo "Clearing all access rules for chain $CHAIN_NAME"

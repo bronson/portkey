@@ -2,7 +2,7 @@
 
 ## Lock down your services
 
-Use Docker, Caddy, and iptables to allow your users to grant themselves access to protected ports on your server.
+Use Docker, Caddy, and iptables to let your users to grant themselves access to protected ports on your server.
 
 ## Setup
 
@@ -13,8 +13,6 @@ Ensure you're using Docker, Docker Compose, and Linux (for iptables support).
 ```bash
 cp .env.example .env
 cp passwd.example passwd
-touch access_log authorized_ips
-chmod 666 access_log authorized_ips
 ```
 
 Now configure the settings in `.env` and add your users to the `passwd` file.
