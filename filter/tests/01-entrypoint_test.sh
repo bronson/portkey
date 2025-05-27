@@ -10,6 +10,7 @@
 #  - Tests are meant to look and act like bash code. Totally familiar.
 #  - Testing is self-contained, nothing to install on the host.
 #  - Test output should contain enough information to see what went wrong.
+#  - the API should be clean and readable; no need to use things named _ or tsk_.
 #
 # Tests are run with an empty writeable directory as the CWD. They
 # are expected to leave this directory empty when they're finished,
@@ -27,7 +28,10 @@ tsk_version="0.1"
 tsk_total_count=0     # current number of tests run
 tsk_pass_count=0      # current number of tests passed
 tsk_fail_count=0      # current number of tests failed
-tsk_run_dir=""        # directory continaing everything when running tests
+tsk_root_dir=""       # main test directory
+tsk_run_dir=""        # directory where tests run
+tsk_orig_cwd=""       # original directory before testing started
+tsk_orig_path=""      # original PATH before testing started
 
 tsk_test_name=""      # the name of the test currently being run
 tsk_test_errors=0     # the number of errors
@@ -80,21 +84,21 @@ _add_error() {
 
 _add_error_with_stderr() {
     _add_error "$@"
-    local snippet="$(head -n 20 "$tsk_run_dir/stderr")"
+    local snippet="$(head -n 20 ".test-stderr")"
     tsk_test_messages="$tsk_test_messages"$'\n'"$(_blockquote "$snippet")"
 }
 
 
 _start_mocking() {
-    local mock_dir="$tsk_run_dir/bin-mocks"
+    local mock_dir=".test-mocks"
     mkdir "$mock_dir"
-    export PATH="$mock_dir:$PATH"
+    export PATH="$(pwd)/$mock_dir:$PATH"
 }
 
 mock() {
     local command="$1"
     local behavior="$2"
-    local executable="$tsk_run_dir/bin-mocks/$command"
+    local executable=".test-mocks/$command"
     cat > "$executable" << EOF
 #!/bin/bash
 $behavior
@@ -105,12 +109,12 @@ EOF
 # at the end of the test, all mocks are removed
 # TODO: one day we might want to set up mocks for multiple tests
 _cleanup_mocks() {
-    rm -rf "$tsk_run_dir"/bin-mocks/* "$tsk_run_dir"/bin-mocks/.*
+    rm -rf .test-mocks/* .test-mocks/.*
 }
 
 _stop_mocking(){
     # no need to remove this dir from PATH because we're about to exit
-    rmdir "$tsk_run_dir/bin-mocks"
+    rmdir ".test-mocks"
     if [ $? -ne 0 ]; then
         echo "Internal error: mock dir wasn't empty?! This is a bug, I'M OUT" >&4
         exit 5
@@ -121,7 +125,7 @@ _stop_mocking(){
 end_test() {
     _cleanup_mocks
 
-    if [ -s "$tsk_run_dir/stderr" ] && [ "$tsk_stderr_checked" = false ]; then
+    if [ -s ".test-stderr" ] && [ "$tsk_stderr_checked" = false ]; then
         _add_error_with_stderr "test produced stderr:"
     fi
 
@@ -133,6 +137,14 @@ end_test() {
         else
             tsk_fail_count=$((tsk_fail_count + 1))
             res="${RED}FAIL${NC}"
+
+            # If test failed, rename the run directory to preserve the state
+            cd "$tsk_orig_cwd"
+            local safe_name=$(echo "$tsk_test_name" | tr ' /\\:*?"<>|' '_')
+            mv "$tsk_run_dir" "$tsk_root_dir/failed-$safe_name"
+            mkdir -p "$tsk_run_dir"
+            cd "$tsk_run_dir"
+            touch ".test-stdout" ".test-stderr"
         fi
 
         local errmsg=''
@@ -156,8 +168,8 @@ ensure() {
     tsk_stderr_checked=false
     tsk_total_count=$((tsk_total_count + 1))
 
-    # TODO: do this in a dedicated directory?
-    exec 1>"$tsk_run_dir/stdout" 2>"$tsk_run_dir/stderr"
+    # Redirect stdout and stderr to files in the run directory
+    exec 1>".test-stdout" 2>".test-stderr"
 
     # no newline, end_test will back up and print the result
     printf " %02d ....   $tsk_test_name" "$tsk_total_count" >&3
@@ -176,7 +188,7 @@ stderr_contains() {
     local expected_text="$1"
 
     tsk_stderr_checked=true
-    if ! grep -q "$expected_text" "$tsk_run_dir/stderr"; then
+    if ! grep -q "$expected_text" ".test-stderr"; then
         _add_error_with_stderr "stderr_contains line $(_line_number): stderr doesn't contain: '$expected_text'"
     fi
 }
@@ -187,7 +199,7 @@ stderr_contains() {
 # TODO: this is not great.
 stderr_is() {
     local expected_text="$1"
-    local actual_text=$(cat "$tsk_run_dir/stderr")
+    local actual_text=$(cat ".test-stderr")
 
     echo -n "$expected_text" > /tmp/et
     echo -n "$actual_text" > /tmp/at
@@ -209,6 +221,10 @@ start_testing() {
     # TODO: ensure local directory is writeable first, bounce to /tmp if not
     # TODO: option to create and mount a ramdisk to run tests
 
+    # Save current directory and PATH
+    tsk_orig_cwd="$(pwd)"
+    tsk_orig_path="$PATH"
+
     # Find an available test directory
     local dir_num=1
     while [ -e "tsk-test-$(printf "%02d" $dir_num)" ]; do
@@ -218,12 +234,17 @@ start_testing() {
             exit 1
         fi
     done
-    tsk_run_dir="tsk-test-$(printf "%02d" $dir_num)"
+    tsk_root_dir="tsk-test-$(printf "%02d" $dir_num)"
+    tsk_run_dir="$tsk_root_dir/run"
 
-    mkdir "$tsk_run_dir"
+    mkdir -p "$tsk_run_dir"
     [ $? -ne 0 ] && exit 1   # error should already be printed
 
-    touch "$tsk_run_dir/stdout" "$tsk_run_dir/stderr"
+    # Change to the run directory
+    cd "$tsk_run_dir"
+
+    # TODO: doesn't seem like this should be necessary...?
+    touch ".test-stdout" ".test-stderr"
     _start_mocking
 }
 
@@ -231,12 +252,18 @@ stop_testing() {
     end_test
     _stop_mocking
 
+    # Restore original stdout and stderr, etc
     exec 1>&3 2>&4
+    export PATH="$tsk_orig_path"
+    cd "$tsk_orig_cwd"
 
     local color="$YELLOW"
     if [ $tsk_fail_count -eq 0 ]; then
         color="$GREEN"
+        # if all tests pass, there's no need to keep the test directory
+        rm -rf "$tsk_root_dir"
     fi
+
     local count="${tsk_total_count} $(pluralize "$tsk_total_count" "test")"
     echo -e "${color}$count: ${tsk_pass_count} passed, ${tsk_fail_count} failed${NC}"
 }
@@ -250,7 +277,7 @@ start_testing
 # }
 
 ensure "ports environment variable is necessary"
-bash ../entrypoint.sh
+bash ../../../entrypoint.sh   # TODO TODO
 is_eq 1 $?
 stderr_is "Error: PORTS environment variable is not set."
 
