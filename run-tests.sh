@@ -2,10 +2,6 @@
 
 # Testing Shell Kit
 
-# TODO: is the current scheme of littering tsk-test-nn directories
-# the right way to go, or should I just blow away a single tsk-test
-# directory on every run and the user can copy any dirs they want to keep?
-
 # Guidance:
 #  - Tests are meant to look and act like bash code. Totally familiar.
 #  - Testing is self-contained, nothing to install on the host.
@@ -267,27 +263,3 @@ stop_testing() {
     local count="${tsk_total_count} $(pluralize "$tsk_total_count" "test")"
     echo -e "${color}$count: ${tsk_pass_count} passed, ${tsk_fail_count} failed${NC}"
 }
-
-# TODO: should automatically start_testing when including the test script
-# and automatically end testing when the script exits?
-start_testing
-
-# TODO: maybe one day we'll write our tests something like this?
-# test:ports-envar-is-necessary() {
-# }
-
-ensure "ports environment variable is necessary"
-bash ../../../entrypoint.sh   # TODO TODO
-is_eq 1 $?
-stderr_is "Error: PORTS environment variable is not set."
-
-export PORTS="80,443"
-
-# ensure "it can do a simple run"
-# mock iptables 'echo "Mock iptables called with: $*"'
-# mock tail 'echo "Mock tail called"; sleep 0.1'
-# bash ../entrypoint.sh
-# is_eq $? 1
-
-# TODO: make this run automatically at end of file
-stop_testing
