@@ -2,12 +2,14 @@
 
 # Testing Shell Kit
 
-# TODO: use a naming scheme to ensure every variable in this file is unique
-# and won't conflict with the test code
+# TODO: is the current scheme of littering tsk-test-nn directories
+# the right way to go, or should I just blow away a single tsk-test
+# directory on every run and the user can copy any dirs they want to keep?
 
 # Guidance:
-#  - tests are meant to look and act like bash code.
-#  - testing is self-contained, nothing to install on the host
+#  - Tests are meant to look and act like bash code. Totally familiar.
+#  - Testing is self-contained, nothing to install on the host.
+#  - Test output should contain enough information to see what went wrong.
 #
 # Tests are run with an empty writeable directory as the CWD. They
 # are expected to leave this directory empty when they're finished,
@@ -30,6 +32,7 @@ tsk_run_dir=""        # directory continaing everything when running tests
 tsk_test_name=""      # the name of the test currently being run
 tsk_test_errors=0     # the number of errors
 tsk_test_messages=""  # string containing a message for each error
+tsk_stderr_checked=false # whether stderr has been explicitly checked
 
 # Colors for output
 RED='\033[0;31m'
@@ -53,11 +56,16 @@ pluralize() {
 }
 
 # returns the line number of the caller of the given frame
-# defaults to 2: the caller of the function calling _line_number
+# defaults to the caller of the function calling _line_number
 _line_number() {
     local frame=${1:-1}
     local info=$(caller $frame)
     echo "${info%% *}"
+}
+
+# used to quote large content in the test output, like stderr
+_blockquote() {
+    echo -n "$1" | sed 's/^/    | /'
 }
 
 _add_error() {
@@ -72,8 +80,8 @@ _add_error() {
 
 _add_error_with_stderr() {
     _add_error "$@"
-    local snippet="$(head -n 20 "$tsk_run_dir/stderr" | sed 's/^/    | /')"
-    tsk_test_messages="$tsk_test_messages"$'\n'"$snippet"
+    local snippet="$(head -n 20 "$tsk_run_dir/stderr")"
+    tsk_test_messages="$tsk_test_messages"$'\n'"$(_blockquote "$snippet")"
 }
 
 
@@ -83,7 +91,7 @@ _start_mocking() {
     export PATH="$mock_dir:$PATH"
 }
 
-create_mock() {
+mock() {
     local command="$1"
     local behavior="$2"
     local executable="$tsk_run_dir/bin-mocks/$command"
@@ -113,7 +121,7 @@ _stop_mocking(){
 end_test() {
     _cleanup_mocks
 
-    if [ -s "$tsk_run_dir/stderr" ]; then
+    if [ -s "$tsk_run_dir/stderr" ] && [ "$tsk_stderr_checked" = false ]; then
         _add_error_with_stderr "test produced stderr:"
     fi
 
@@ -145,6 +153,7 @@ ensure() {
 
     tsk_test_errors=0
     tsk_test_name="$1"
+    tsk_stderr_checked=false
     tsk_total_count=$((tsk_total_count + 1))
 
     # TODO: do this in a dedicated directory?
@@ -166,8 +175,27 @@ is_eq() {
 stderr_contains() {
     local expected_text="$1"
 
+    tsk_stderr_checked=true
     if ! grep -q "$expected_text" "$tsk_run_dir/stderr"; then
         _add_error_with_stderr "stderr_contains line $(_line_number): stderr doesn't contain: '$expected_text'"
+    fi
+}
+
+# One trailing newline, if present, is trimmed from stdout before comparison.
+# If you need to be pedantically correct about the presence of the final
+# newline, you'll have to check for it outside of this function.
+# TODO: this is not great.
+stderr_is() {
+    local expected_text="$1"
+    local actual_text=$(cat "$tsk_run_dir/stderr")
+
+    echo -n "$expected_text" > /tmp/et
+    echo -n "$actual_text" > /tmp/at
+
+    tsk_stderr_checked=true
+    if [ "$expected_text" != "$actual_text" ]; then
+        local msg="stderr should have been: "$'\n'"$(_blockquote "$expected_text")"$'\n'"    but was:"
+        _add_error_with_stderr "stderr_is line $(_line_number): $msg"
     fi
 }
 
@@ -224,17 +252,15 @@ start_testing
 ensure "ports environment variable is necessary"
 bash ../entrypoint.sh
 is_eq 1 $?
-# stderr_contains "Error: PORTS environment variable is not set"
-
+stderr_is "Error: PORTS environment variable is not set."
 
 export PORTS="80,443"
 
 # ensure "it can do a simple run"
 # mock iptables 'echo "Mock iptables called with: $*"'
 # mock tail 'echo "Mock tail called"; sleep 0.1'
-# bash entrypoint.sh
+# bash ../entrypoint.sh
 # is_eq $? 1
-
 
 # TODO: make this run automatically at end of file
 stop_testing
