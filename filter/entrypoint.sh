@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-ACCESS_LOG="/app/access_log"
-AUTHORIZED_IPS="/app/authorized_ips"
+ACCESS_LOG=${ACCESS_LOG:-"/app/access_log"}
+AUTHORIZED_IPS=${AUTHORIZED_IPS:-"/app/authorized_ips"}
 CHAIN_NAME="${CHAIN_NAME:-PORTKEY_AUTH}"
 
 if [ -z "$PORTS" ]; then
-    echo "Error: PORTS environment variable is not set."
+    echo "Error: PORTS environment variable is not set." >&2
     exit 1
 fi
 IFS=',' read -ra PORT_ARRAY <<< "$PORTS"
