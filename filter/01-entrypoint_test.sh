@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ../run-tests.sh
+source "$(dirname "$0")/../run-tests.sh"
 
 # TODO: what happens if a test exports some variables?
 # That messes up following tests right?
