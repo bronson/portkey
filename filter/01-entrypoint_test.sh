@@ -15,7 +15,7 @@ start_testing
 test:ports-envar-is-necessary()
 {
     ensure "ports environment variable is necessary"
-    bash ../../entrypoint.sh   # TODO TODO
+    bash "$(testfile_dir)/entrypoint.sh"
     is_eq 1 $?
     stderr_is "Error: PORTS environment variable is not set."
 }
@@ -27,7 +27,7 @@ export PORTS="80,443"
 # ensure "it can do a simple run"
 # mock iptables 'echo "Mock iptables called with: $*"'
 # mock tail 'echo "Mock tail called"; sleep 0.1'
-# bash ../entrypoint.sh
+# bash "$(testfile_dir)/entrypoint.sh"
 # is_eq $? 1
 
 # TODO: make this run automatically at end of file
