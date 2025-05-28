@@ -9,7 +9,6 @@
 
 test:ports-envar-is-necessary()
 {
-    ensure "ports environment variable is necessary"
     bash "$(testfile_dir)/entrypoint.sh"
     is_eq 1 $?
     stderr_is "Error: PORTS environment variable is not set."
