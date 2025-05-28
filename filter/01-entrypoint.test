@@ -1,16 +1,11 @@
 #!/bin/bash
 
-source "$(dirname "$0")/../run-tests"
 
 # TODO: what happens if a test exports some variables?
 # That messes up following tests right?
 
 # tests should be self-contained, able to run in parallel with other
 # tests, and not depend on what order they're run in.
-
-# TODO: should automatically start_testing when including the test script
-# and automatically end testing when the script exits?
-start_testing
 
 test:ports-envar-is-necessary()
 {
@@ -19,10 +14,9 @@ test:ports-envar-is-necessary()
     is_eq 1 $?
     stderr_is "Error: PORTS environment variable is not set."
 }
-test:ports-envar-is-necessary
 
 
-export PORTS="80,443"
+# export PORTS="80,443"
 
 # ensure "it can do a simple run"
 # mock iptables 'echo "Mock iptables called with: $*"'
@@ -30,5 +24,7 @@ export PORTS="80,443"
 # bash "$(testfile_dir)/entrypoint.sh"
 # is_eq $? 1
 
-# TODO: make this run automatically at end of file
-stop_testing
+
+# TODO: it doesn't seem idiomatic to source the framework at the
+# bottom of the file, but this will work for now.
+source "$(dirname "$0")/../test-harness"
