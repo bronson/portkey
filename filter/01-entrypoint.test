@@ -26,4 +26,4 @@ test:ports-envar-is-necessary()
 
 # TODO: it doesn't seem idiomatic to source the framework at the
 # bottom of the file, but this will work for now.
-source "$(dirname "$0")/../test-harness"
+source "$(dirname "$BASH_SOURCE")/../test-harness"
